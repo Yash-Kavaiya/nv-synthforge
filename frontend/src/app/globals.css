@@ -174,6 +174,7 @@ svg { width: 18px; height: 18px; flex: 0 0 auto; }
 .studio-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(340px, .8fr); gap: 18px; align-items: start; }
 .studio-domain-tools { display: grid; justify-items: end; gap: 10px; }
 .domain-switcher { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 4px; background: var(--ink-900); border: 1px solid var(--line); border-radius: 9px; }
+.domain-switcher.domain-switcher-wide { grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: 520px; }
 .domain-switcher button { min-width: 0; min-height: 34px; color: var(--muted); background: transparent; border: 0; border-radius: 6px; font-size: 10px; font-weight: 800; }
 .domain-switcher button.segment-active { color: #e8ffd0; background: var(--lime-soft); box-shadow: inset 0 0 0 1px #3b5d21; }
 .studio-header-meta { display: flex; align-items: center; justify-content: flex-end; gap: 9px; color: var(--dim); font: 9px var(--font-geist-mono), monospace; }
@@ -394,6 +395,37 @@ svg { width: 18px; height: 18px; flex: 0 0 auto; }
 .legal-more { margin: 10px 0 0; color: #7a6d5c; font-size: 8px; font-weight: 800; text-align: center; }
 .legal-footer { display: flex; align-items: center; gap: 6px; margin-top: 14px; padding-top: 9px; color: #7a6d5c; border-top: 1px solid #d8d0c2; font-size: 7px; }
 .legal-footer svg { width: 11px; }
+
+.finance-statement, .hr-record, .retail-product { background: #f5f7fb; color: #142033; }
+.finance-accent, .hr-accent, .retail-accent { height: 7px; margin: -30px -30px 22px; }
+.finance-accent { background: linear-gradient(90deg, #76b900 0 24%, #2f6fed 24% 100%); }
+.hr-accent { background: linear-gradient(90deg, #76b900 0 24%, #7b5cff 24% 100%); }
+.retail-accent { background: linear-gradient(90deg, #76b900 0 24%, #e07a2f 24% 100%); }
+.finance-head, .hr-head, .retail-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding-bottom: 16px; border-bottom: 1px solid #cfd8e6; }
+.finance-brand, .hr-brand, .retail-brand { display: flex; align-items: center; gap: 12px; }
+.finance-brand > span, .hr-brand > span, .retail-brand > span { width: 38px; height: 38px; display: grid; place-items: center; color: #fff; border-radius: 10px; }
+.finance-brand > span { background: #1f4fbf; }
+.hr-brand > span { background: #4f3db8; }
+.retail-brand > span { background: #b85d1f; }
+.finance-brand svg, .hr-brand svg, .retail-brand svg { width: 20px; }
+.finance-brand small, .hr-brand small, .retail-brand small, .finance-meta small, .hr-meta small, .retail-meta small, .retail-summary small { display: block; color: #6b7a90; font-size: 7px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+.finance-brand h2, .hr-brand h2, .retail-brand h2 { margin: 4px 0 0; font-size: 18px; line-height: 1.2; }
+.finance-meta, .hr-meta, .retail-meta, .retail-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 16px 0 12px; }
+.retail-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.finance-meta > div, .hr-meta > div, .retail-meta > div, .retail-summary > div { min-width: 0; padding: 9px; background: #e8eef8; border: 1px solid #d3dceb; border-radius: 7px; }
+.finance-meta strong, .hr-meta strong, .retail-meta strong, .retail-summary strong { display: block; margin-top: 4px; overflow: hidden; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.finance-lines, .hr-sections, .retail-reviews { display: grid; gap: 8px; }
+.finance-lines article, .hr-sections article, .retail-reviews article { padding: 10px; background: #fff; border: 1px solid #d5deea; border-radius: 8px; }
+.finance-lines article { display: grid; grid-template-columns: auto 1fr auto auto; gap: 8px; align-items: center; }
+.finance-lines span, .hr-sections span { width: 18px; min-width: fit-content; padding: 0 4px; height: 18px; display: grid; place-items: center; color: #fff; background: #1f4fbf; border-radius: 4px; font-size: 7px; font-weight: 900; }
+.finance-lines strong, .hr-sections strong, .retail-reviews strong { font-size: 9px; }
+.finance-lines i, .finance-lines em { font-size: 8px; font-style: normal; font-weight: 800; text-transform: uppercase; }
+.hr-sections article { display: grid; grid-template-columns: auto 1fr; gap: 8px; }
+.hr-sections p, .retail-reviews p { margin: 4px 0 0; color: #3d4d63; font-size: 8px; line-height: 1.45; }
+.retail-reviews article > div { display: flex; justify-content: space-between; gap: 8px; }
+.finance-more, .hr-more, .retail-more { margin: 10px 0 0; color: #6b7a90; font-size: 8px; font-weight: 800; text-align: center; }
+.finance-footer, .hr-footer, .retail-footer { display: flex; align-items: center; gap: 6px; margin-top: 14px; padding-top: 9px; color: #6b7a90; border-top: 1px solid #cfd8e6; font-size: 7px; }
+.finance-footer svg, .hr-footer svg, .retail-footer svg { width: 11px; }
 
 .filter-bar { padding: 12px; display: grid; grid-template-columns: minmax(260px, 1fr) auto auto; align-items: center; gap: 12px; }
 .filter-search, .filter-selects label { min-height: 40px; padding: 0 11px; display: flex; align-items: center; gap: 8px; background: var(--ink-900); border: 1px solid var(--line); border-radius: 8px; }

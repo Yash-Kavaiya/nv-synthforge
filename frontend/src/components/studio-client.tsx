@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Braces, Check, ChevronDown, CircleAlert, CloudCog, Cpu, Download, Eye, FileJson2, Gauge, Languages, LoaderCircle, RotateCcw, ShieldCheck, Sparkles, WandSparkles } from "lucide-react";
 import { api } from "@/lib/api";
 import { fallbackGallery } from "@/lib/mock-data";
-import type { ClinicalProfile, DomainId, GenerateRequest, Job, Language, LegalDocumentType, Provider, SentimentArc, SupportIndustry } from "@/lib/types";
+import type { ClinicalProfile, DomainId, FinanceStatementType, GenerateRequest, HRDocumentType, Job, Language, LegalDocumentType, Provider, RetailCategory, SentimentArc, SupportIndustry } from "@/lib/types";
 import { DocumentPreview } from "./document-preview";
 import { ValidationRules } from "./invoice-preview";
 import { Badge, Button, Card, cn } from "./ui";
@@ -22,6 +22,9 @@ const invoiceDefaults: GenerateRequest = {
   healthcare: { clinical_profile: "mixed", include_medications: true },
   support: { industry: "mixed", sentiment_arc: "recovery", max_turns: 6 },
   legal: { document_type: "mixed", max_clauses: 6 },
+  finance: { statement_type: "mixed", max_lines: 6 },
+  hr: { document_type: "mixed", max_sections: 4 },
+  retail: { category: "mixed", max_reviews: 3 },
 };
 
 function defaultsFor(domain: DomainId): GenerateRequest {
@@ -32,6 +35,9 @@ function defaultsFor(domain: DomainId): GenerateRequest {
     healthcare: { ...invoiceDefaults.healthcare },
     support: { ...invoiceDefaults.support },
     legal: { ...invoiceDefaults.legal },
+    finance: { ...invoiceDefaults.finance },
+    hr: { ...invoiceDefaults.hr },
+    retail: { ...invoiceDefaults.retail },
   };
   return domain === "invoices"
     ? shared
@@ -39,6 +45,17 @@ function defaultsFor(domain: DomainId): GenerateRequest {
 }
 
 const labels: Record<Language, string> = { "en-IN": "English", "hi-IN": "हिन्दी", "gu-IN": "ગુજરાતી" };
+
+const DOMAIN_META: Record<DomainId, { label: string; workbench: string; title: string; description: string; schema: string; noun: string; validation: string }> = {
+  invoices: { label: "Invoices", workbench: "INVOICE WORKBENCH / V1.4", title: "Invoice Studio", description: "Compose a reproducible synthetic document run, then inspect every validation signal.", schema: "invoice.india.v4", noun: "invoices", validation: "GST arithmetic, date logic, addresses, currencies, and line-item integrity are checked before output." },
+  healthcare: { label: "Healthcare", workbench: "HEALTHCARE WORKBENCH / V1.0", title: "Clinical Note Studio", description: "Generate privacy-safe synthetic SOAP notes with pseudonymous identities and clinical validation.", schema: "clinical.soap.v1", noun: "clinical notes", validation: "Synthetic labeling, pseudonymous identity, SOAP completeness, ICD-10 presence, and vital-sign consistency are checked before output." },
+  support: { label: "Support", workbench: "SUPPORT WORKBENCH / V1.0", title: "Conversation Studio", description: "Generate deterministic multi-turn service conversations with sentiment and resolution validation.", schema: "support.conversation.v1", noun: "conversations", validation: "Synthetic labeling, pseudonymous identity, turn alternation, resolution state, and sentiment progression are checked before output." },
+  legal: { label: "Legal", workbench: "LEGAL WORKBENCH / V1.0", title: "Contract Studio", description: "Generate synthetic NDAs, service agreements, and MSAs with clause libraries and risk flags.", schema: "legal.contract.v1", noun: "contracts", validation: "Synthetic labeling, distinct parties, sequential clauses, confidentiality, and disclaimer presence are checked before output." },
+  finance: { label: "Finance", workbench: "FINANCE WORKBENCH / V1.0", title: "Statement Studio", description: "Generate synthetic balance sheets, income statements, and cash-flow records with reconciled totals.", schema: "finance.statement.v1", noun: "statements", validation: "Synthetic entity IDs, valid periods, debit/credit reconciliation, and net-position integrity are checked before output." },
+  hr: { label: "HR", workbench: "HR WORKBENCH / V1.0", title: "People Studio", description: "Generate synthetic offer letters, performance reviews, and onboarding checklists.", schema: "hr.record.v1", noun: "HR records", validation: "Synthetic employee IDs, positive compensation, sequential sections, and disclaimer presence are checked before output." },
+  retail: { label: "Retail", workbench: "RETAIL WORKBENCH / V1.0", title: "Catalog Studio", description: "Generate synthetic product listings with pricing, inventory, and review ratings.", schema: "retail.product.v1", noun: "products", validation: "Synthetic SKUs, pricing consistency, sequential reviews, and rating averages are checked before output." },
+};
+
 
 export function StudioClient({ initialDomain = "invoices" }: { initialDomain?: DomainId }) {
   const initialConfig = defaultsFor(initialDomain);
@@ -154,31 +171,17 @@ export function StudioClient({ initialDomain = "invoices" }: { initialDomain?: D
     setJsonError("");
   }
 
+  const meta = DOMAIN_META[config.domain];
   const isHealthcare = config.domain === "healthcare";
   const isSupport = config.domain === "support";
   const isLegal = config.domain === "legal";
-  const isStructured = isHealthcare || isSupport || isLegal;
-  const workbenchLabel = isHealthcare
-    ? "HEALTHCARE WORKBENCH / V1.0"
-    : isSupport
-      ? "SUPPORT WORKBENCH / V1.0"
-      : isLegal
-        ? "LEGAL WORKBENCH / V1.0"
-        : "INVOICE WORKBENCH / V1.4";
-  const studioTitle = isHealthcare
-    ? "Clinical Note Studio"
-    : isSupport
-      ? "Conversation Studio"
-      : isLegal
-        ? "Contract Studio"
-        : "Invoice Studio";
-  const studioDescription = isHealthcare
-    ? "Generate privacy-safe synthetic SOAP notes with pseudonymous identities and clinical validation."
-    : isSupport
-      ? "Generate deterministic multi-turn service conversations with sentiment and resolution validation."
-      : isLegal
-        ? "Generate synthetic NDAs, service agreements, and MSAs with clause libraries and risk flags."
-        : "Compose a reproducible synthetic document run, then inspect every validation signal.";
+  const isFinance = config.domain === "finance";
+  const isHr = config.domain === "hr";
+  const isRetail = config.domain === "retail";
+  const isStructured = config.domain !== "invoices";
+  const workbenchLabel = meta.workbench;
+  const studioTitle = meta.title;
+  const studioDescription = meta.description;
   const activeResult = job?.results[0];
 
   return (
@@ -186,13 +189,12 @@ export function StudioClient({ initialDomain = "invoices" }: { initialDomain?: D
       <section className="studio-header">
         <div><p className="eyebrow">{workbenchLabel}</p><h1>{studioTitle}</h1><p>{studioDescription}</p></div>
         <div className="studio-domain-tools">
-          <div className="domain-switcher" aria-label="Generation domain">
-            <button type="button" className={config.domain === "invoices" ? "segment-active" : ""} aria-pressed={config.domain === "invoices"} onClick={() => switchDomain("invoices")}>Invoices</button>
-            <button type="button" className={isHealthcare ? "segment-active" : ""} aria-pressed={isHealthcare} onClick={() => switchDomain("healthcare")}>Healthcare</button>
-            <button type="button" className={isSupport ? "segment-active" : ""} aria-pressed={isSupport} onClick={() => switchDomain("support")}>Support</button>
-            <button type="button" className={isLegal ? "segment-active" : ""} aria-pressed={isLegal} onClick={() => switchDomain("legal")}>Legal</button>
+          <div className="domain-switcher domain-switcher-wide" aria-label="Generation domain">
+            {(Object.keys(DOMAIN_META) as DomainId[]).map((domain) => (
+              <button key={domain} type="button" className={config.domain === domain ? "segment-active" : ""} aria-pressed={config.domain === domain} onClick={() => switchDomain(domain)}>{DOMAIN_META[domain].label}</button>
+            ))}
           </div>
-          <div className="studio-header-meta"><Badge tone="accent"><ShieldCheck aria-hidden="true" /> SCHEMA LOCKED</Badge><span>{isHealthcare ? "clinical.soap.v1" : isSupport ? "support.conversation.v1" : isLegal ? "legal.contract.v1" : "invoice.india.v4"}</span></div>
+          <div className="studio-header-meta"><Badge tone="accent"><ShieldCheck aria-hidden="true" /> SCHEMA LOCKED</Badge><span>{meta.schema}</span></div>
         </div>
       </section>
 
@@ -220,7 +222,7 @@ export function StudioClient({ initialDomain = "invoices" }: { initialDomain?: D
             <fieldset className="field-block"><legend>Document language</legend><div className="segment-control">{(Object.keys(labels) as Language[]).map((language) => <button type="button" key={language} className={config.language === language ? "segment-active" : ""} onClick={() => setConfig({ ...config, language })} aria-pressed={config.language === language}><strong>{labels[language]}</strong><span>{language}</span></button>)}</div></fieldset>
             <fieldset className="field-block"><legend>Generation provider</legend><div className="provider-grid">
               <button type="button" className={cn("provider-card", config.provider === "offline" && "provider-active")} onClick={() => setConfig({ ...config, provider: "offline" as Provider })} aria-pressed={config.provider === "offline"}><Cpu aria-hidden="true" /><div><strong>Offline forge</strong><span>Fast, private, deterministic</span></div><i>{config.provider === "offline" ? <Check /> : null}</i></button>
-              <button type="button" disabled={isStructured} className={cn("provider-card", config.provider === "nemo" && "provider-active", isStructured && "control-disabled")} onClick={() => !isStructured && setConfig({ ...config, provider: "nemo" as Provider })} aria-pressed={config.provider === "nemo"}><CloudCog aria-hidden="true" /><div><strong>NVIDIA NeMo</strong><span>{isHealthcare ? "Clinical adapter calibration pending" : isSupport ? "Conversation adapter calibration pending" : isLegal ? "Contract adapter calibration pending" : "Higher variation, API-backed"}</span></div><i>{config.provider === "nemo" ? <Check /> : null}</i></button>
+              <button type="button" disabled={isStructured} className={cn("provider-card", config.provider === "nemo" && "provider-active", isStructured && "control-disabled")} onClick={() => !isStructured && setConfig({ ...config, provider: "nemo" as Provider })} aria-pressed={config.provider === "nemo"}><CloudCog aria-hidden="true" /><div><strong>NVIDIA NeMo</strong><span>{isStructured ? `${meta.label} adapter calibration pending` : "Higher variation, API-backed"}</span></div><i>{config.provider === "nemo" ? <Check /> : null}</i></button>
             </div></fieldset>
           </Card>
 
@@ -275,6 +277,54 @@ export function StudioClient({ initialDomain = "invoices" }: { initialDomain?: D
               </div>
               <div className="clinical-policy"><ShieldCheck aria-hidden="true" /><div><strong>Contract policy enforced</strong><span>Synthetic labeling, pseudonymous parties, sequential clauses, confidentiality coverage, and disclaimer presence are validated on every record.</span></div></div>
             </Card>
+          ) : isFinance ? (
+            <Card className="config-card">
+              <ConfigHeader number="03" icon={<ShieldCheck />} title="Statement controls" description="Statement family and line budget" />
+              <div className="field-block">
+                <label htmlFor="finance-statement-type">Statement type</label>
+                <select id="finance-statement-type" className="studio-select" value={config.finance.statement_type} onChange={(event) => setConfig({ ...config, finance: { ...config.finance, statement_type: event.target.value as FinanceStatementType } })}>
+                  <option value="mixed">Mixed statements</option><option value="balance-sheet">Balance sheet</option><option value="income-statement">Income statement</option><option value="cash-flow">Cash flow</option>
+                </select>
+              </div>
+              <div className="field-block">
+                <div className="field-label"><label htmlFor="max-lines">Maximum line items</label><output htmlFor="max-lines">{config.finance.max_lines}</output></div>
+                <input id="max-lines" type="range" min="3" max="8" step="1" value={config.finance.max_lines} onChange={(event) => setConfig({ ...config, finance: { ...config.finance, max_lines: Number(event.target.value) } })} style={{ "--range-progress": `${((config.finance.max_lines - 3) / 5) * 100}%` } as React.CSSProperties} />
+                <div className="range-marks"><span>3</span><span>5</span><span>6</span><span>8</span></div>
+              </div>
+              <div className="clinical-policy"><ShieldCheck aria-hidden="true" /><div><strong>Ledger policy enforced</strong><span>Synthetic entity IDs, valid period windows, debit/credit totals, and net-position integrity are validated on every record.</span></div></div>
+            </Card>
+          ) : isHr ? (
+            <Card className="config-card">
+              <ConfigHeader number="03" icon={<ShieldCheck />} title="People controls" description="Document family and section budget" />
+              <div className="field-block">
+                <label htmlFor="hr-document-type">Document type</label>
+                <select id="hr-document-type" className="studio-select" value={config.hr.document_type} onChange={(event) => setConfig({ ...config, hr: { ...config.hr, document_type: event.target.value as HRDocumentType } })}>
+                  <option value="mixed">Mixed HR records</option><option value="offer-letter">Offer letter</option><option value="performance-review">Performance review</option><option value="onboarding-checklist">Onboarding checklist</option>
+                </select>
+              </div>
+              <div className="field-block">
+                <div className="field-label"><label htmlFor="max-sections">Maximum sections</label><output htmlFor="max-sections">{config.hr.max_sections}</output></div>
+                <input id="max-sections" type="range" min="3" max="6" step="1" value={config.hr.max_sections} onChange={(event) => setConfig({ ...config, hr: { ...config.hr, max_sections: Number(event.target.value) } })} style={{ "--range-progress": `${((config.hr.max_sections - 3) / 3) * 100}%` } as React.CSSProperties} />
+                <div className="range-marks"><span>3</span><span>4</span><span>5</span><span>6</span></div>
+              </div>
+              <div className="clinical-policy"><ShieldCheck aria-hidden="true" /><div><strong>People policy enforced</strong><span>Pseudonymous employee IDs, positive CTC, sequential sections, and synthetic disclaimers are validated on every record.</span></div></div>
+            </Card>
+          ) : isRetail ? (
+            <Card className="config-card">
+              <ConfigHeader number="03" icon={<ShieldCheck />} title="Catalog controls" description="Category mix and review depth" />
+              <div className="field-block">
+                <label htmlFor="retail-category">Product category</label>
+                <select id="retail-category" className="studio-select" value={config.retail.category} onChange={(event) => setConfig({ ...config, retail: { ...config.retail, category: event.target.value as RetailCategory } })}>
+                  <option value="mixed">Mixed catalog</option><option value="electronics">Electronics</option><option value="home">Home</option><option value="apparel">Apparel</option><option value="grocery">Grocery</option>
+                </select>
+              </div>
+              <div className="field-block">
+                <div className="field-label"><label htmlFor="max-reviews">Maximum reviews</label><output htmlFor="max-reviews">{config.retail.max_reviews}</output></div>
+                <input id="max-reviews" type="range" min="1" max="5" step="1" value={config.retail.max_reviews} onChange={(event) => setConfig({ ...config, retail: { ...config.retail, max_reviews: Number(event.target.value) } })} style={{ "--range-progress": `${((config.retail.max_reviews - 1) / 4) * 100}%` } as React.CSSProperties} />
+                <div className="range-marks"><span>1</span><span>2</span><span>3</span><span>5</span></div>
+              </div>
+              <div className="clinical-policy"><ShieldCheck aria-hidden="true" /><div><strong>Catalog policy enforced</strong><span>Synthetic SKUs, list/sale pricing integrity, sequential reviews, and rating averages are validated on every record.</span></div></div>
+            </Card>
           ) : (
             <Card className="config-card">
               <ConfigHeader number="03" icon={<WandSparkles />} title="Render & degradation" description="Control document realism" />
@@ -297,7 +347,7 @@ export function StudioClient({ initialDomain = "invoices" }: { initialDomain?: D
           <Card className="run-card">
             <div className="run-card-head"><div><p className="eyebrow">RUN MANIFEST</p><h2>Ready to forge</h2></div><span className="status-lamp" /></div>
             <dl className="run-manifest">
-              <div><dt>Domain</dt><dd>{isHealthcare ? "Healthcare" : isSupport ? "Support" : isLegal ? "Legal" : "Invoices"}</dd></div><div><dt>Records</dt><dd>{config.count}</dd></div><div><dt>Language</dt><dd>{config.language}</dd></div><div><dt>Provider</dt><dd>{config.provider === "nemo" ? "NVIDIA NeMo" : "Offline forge"}</dd></div><div><dt>Seed</dt><dd>{config.seed}</dd></div><div><dt>Outputs</dt><dd>{isStructured ? "JSON · JSONL" : config.render ? "JSON · PDF · PNG" : "JSON"}</dd></div>
+              <div><dt>Domain</dt><dd>{meta.label}</dd></div><div><dt>Records</dt><dd>{config.count}</dd></div><div><dt>Language</dt><dd>{config.language}</dd></div><div><dt>Provider</dt><dd>{config.provider === "nemo" ? "NVIDIA NeMo" : "Offline forge"}</dd></div><div><dt>Seed</dt><dd>{config.seed}</dd></div><div><dt>Outputs</dt><dd>{isStructured ? "JSON · JSONL" : config.render ? "JSON · PDF · PNG" : "JSON"}</dd></div>
             </dl>
             <div className="estimated-row"><span>Estimated runtime</span><strong>~{Math.max(3, Math.ceil(config.count * (config.provider === "nemo" ? 0.42 : 0.18)))}s</strong></div>
             <Button className="button-primary button-generate" loading={submitting} onClick={generate}><Sparkles aria-hidden="true" /> {submitting ? "Starting job" : "Generate dataset"}</Button>
@@ -309,7 +359,7 @@ export function StudioClient({ initialDomain = "invoices" }: { initialDomain?: D
 
       {job ? <section className="job-section" aria-live="polite">
         <Card className="job-progress-card">
-          <div className="job-progress-head"><div><span className={cn("job-state-icon", job.status === "completed" && "job-complete")}>{job.status === "completed" ? <Check /> : <LoaderCircle className={job.status !== "failed" ? "animate-spin" : ""} />}</span><div><p className="eyebrow">JOB {job.id}</p><h2>{job.status === "completed" ? "Dataset forged successfully" : job.status === "failed" ? "Generation failed" : "Generation in progress"}</h2><span>{job.message ?? (job.status === "completed" ? `${job.results.length} ${config.domain === "support" ? "conversations" : config.domain === "healthcare" ? "clinical notes" : config.domain === "legal" ? "contracts" : "invoices"} passed validation` : "Waiting for worker telemetry")}</span></div></div><strong>{job.progress}%</strong></div>
+          <div className="job-progress-head"><div><span className={cn("job-state-icon", job.status === "completed" && "job-complete")}>{job.status === "completed" ? <Check /> : <LoaderCircle className={job.status !== "failed" ? "animate-spin" : ""} />}</span><div><p className="eyebrow">JOB {job.id}</p><h2>{job.status === "completed" ? "Dataset forged successfully" : job.status === "failed" ? "Generation failed" : "Generation in progress"}</h2><span>{job.message ?? (job.status === "completed" ? `${job.results.length} ${meta.noun} passed validation` : "Waiting for worker telemetry")}</span></div></div><strong>{job.progress}%</strong></div>
           <div className="progress-track"><span style={{ width: `${job.progress}%` }} /></div>
         </Card>
         {activeResult ? <div className="result-grid"><Card className="result-preview-card"><div className="result-card-head"><div><p className="eyebrow">OUTPUT PREVIEW</p><h3>{activeResult.title}</h3></div><Badge tone="accent">VALIDATED</Badge></div><DocumentPreview document={activeResult} compact /></Card><Card className="result-validation-card"><div className="score-ring" style={{ "--score": `${activeResult.validationScore * 3.6}deg` } as React.CSSProperties}><div><strong>{activeResult.validationScore}</strong><span>/ 100</span></div></div><div><p className="eyebrow">QUALITY SCORE</p><h3>Validation checks</h3></div><ValidationRules document={activeResult} /><div className="result-actions"><Link href="/gallery" className="button"><Eye aria-hidden="true" /> Inspect results</Link><button className="button" onClick={() => downloadManifest(activeResult)}><Download aria-hidden="true" /> Manifest</button></div></Card></div> : null}

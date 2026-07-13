@@ -20,6 +20,18 @@ _BENCHMARK_DEFINITIONS = {
         "name": "Legal contract quality benchmark",
         "metric_scope": "synthetic parties, clause structure, confidentiality, and disclaimer consistency",
     },
+    "finance": {
+        "name": "Finance statement quality benchmark",
+        "metric_scope": "synthetic entity, period window, and debit/credit reconciliation",
+    },
+    "hr": {
+        "name": "HR record quality benchmark",
+        "metric_scope": "synthetic employee identity, section structure, and compensation consistency",
+    },
+    "retail": {
+        "name": "Retail product quality benchmark",
+        "metric_scope": "SKU pattern, pricing integrity, and review-rating consistency",
+    },
 }
 
 

@@ -45,8 +45,19 @@ def test_invoice_rejects_invalid_gstin_checksum_shape() -> None:
 
 def test_domain_registry_exposes_available_capabilities() -> None:
     domains = list_domains()
-    assert [domain.slug for domain in domains] == ["invoice", "healthcare", "support", "legal"]
+    assert [domain.slug for domain in domains] == [
+        "invoice",
+        "healthcare",
+        "support",
+        "legal",
+        "finance",
+        "hr",
+        "retail",
+    ]
     assert get_domain("invoice").supports == {"json", "document", "image"}
     assert get_domain("healthcare").supports == {"json"}
     assert get_domain("support").supports == {"json"}
     assert get_domain("legal").supports == {"json"}
+    assert get_domain("finance").supports == {"json"}
+    assert get_domain("hr").supports == {"json"}
+    assert get_domain("retail").supports == {"json"}

@@ -204,10 +204,46 @@ def test_legal_generation_is_available_through_jobs_and_gallery(tmp_path: Path) 
         assert client.get("/api/v1/gallery").json()["items"][0]["domain"] == "legal"
 
 
+def test_finance_hr_retail_generation_is_available(tmp_path: Path) -> None:
+    with TestClient(create_app(data_dir=tmp_path)) as client:
+        domains = {item["id"]: item for item in client.get("/api/v1/domains").json()["domains"]}
+        for domain_id in ("finance", "hr", "retail"):
+            assert domains[domain_id]["available"] is True
+
+        cases = [
+            ("finance", {"finance": {"statement_type": "income-statement", "max_lines": 5}}, "statement", "FIN-"),
+            ("hr", {"hr": {"document_type": "performance-review", "max_sections": 4}}, "hr_record", "HR-"),
+            ("retail", {"retail": {"category": "home", "max_reviews": 2}}, "product", "RTL-"),
+        ]
+        for domain, payload, payload_key, prefix in cases:
+            queued = client.post(
+                "/api/v1/generate",
+                json={
+                    "domain": domain,
+                    "count": 1,
+                    "seed": 33,
+                    "provider": "offline",
+                    "language": "hi-IN",
+                    "render": False,
+                    "degrade": False,
+                    **payload,
+                },
+            )
+            assert queued.status_code == 202, domain
+            job = wait_for_completion(client, queued.json()["job_id"])
+            assert job["status"] == "completed", (domain, job.get("error"))
+            first = job["results"][0]
+            assert first["domain"] == domain
+            assert first[payload_key]["synthetic"] is True
+            assert first["validation_score"] == 100.0
+            identity = first[payload_key].get("statement_id") or first[payload_key].get("record_id") or first[payload_key].get("product_id")
+            assert identity.startswith(prefix)
+
+
 def test_benchmarks_report_domain_specific_metric_scopes(tmp_path: Path) -> None:
     with TestClient(create_app(data_dir=tmp_path)) as client:
         job_ids: dict[str, str] = {}
-        for domain in ("invoices", "support", "healthcare", "legal"):
+        for domain in ("invoices", "support", "healthcare", "legal", "finance", "hr", "retail"):
             queued = client.post(
                 "/api/v1/generate",
                 json={
@@ -226,13 +262,19 @@ def test_benchmarks_report_domain_specific_metric_scopes(tmp_path: Path) -> None
 
         benchmarks = client.get("/api/v1/benchmarks").json()["benchmarks"]
         by_domain = {benchmark["domain"]: benchmark for benchmark in benchmarks}
-        assert set(by_domain) == {"invoices", "support", "healthcare", "legal"}
+        assert set(by_domain) == {"invoices", "support", "healthcare", "legal", "finance", "hr", "retail"}
         assert "GST" in by_domain["invoices"]["metric_scope"]
         assert "SOAP" in by_domain["healthcare"]["metric_scope"]
         assert "sentiment" in by_domain["support"]["metric_scope"]
         assert "clause" in by_domain["legal"]["metric_scope"]
+        assert "debit" in by_domain["finance"]["metric_scope"]
+        assert "employee" in by_domain["hr"]["metric_scope"]
+        assert "SKU" in by_domain["retail"]["metric_scope"]
         assert by_domain["support"]["name"] == "Customer support conversation quality benchmark"
         assert by_domain["legal"]["name"] == "Legal contract quality benchmark"
+        assert by_domain["finance"]["name"] == "Finance statement quality benchmark"
+        assert by_domain["hr"]["name"] == "HR record quality benchmark"
+        assert by_domain["retail"]["name"] == "Retail product quality benchmark"
 
         support_benchmark = client.post(
             "/api/v1/benchmarks",
@@ -249,6 +291,14 @@ def test_benchmarks_report_domain_specific_metric_scopes(tmp_path: Path) -> None
         assert legal_benchmark.status_code == 200
         assert legal_benchmark.json()["domain"] == "legal"
         assert legal_benchmark.json()["score"] == 100.0
+
+        finance_benchmark = client.post(
+            "/api/v1/benchmarks",
+            json={"job_id": job_ids["finance"]},
+        )
+        assert finance_benchmark.status_code == 200
+        assert finance_benchmark.json()["domain"] == "finance"
+        assert finance_benchmark.json()["score"] == 100.0
 
 
 def test_generation_is_deterministic_and_nemo_missing_key_is_clear(tmp_path: Path, monkeypatch) -> None:

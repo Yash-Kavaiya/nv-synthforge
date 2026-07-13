@@ -2,6 +2,7 @@ import { fallbackGallery } from "./mock-data";
 import type {
   BenchmarkResult,
   Domain,
+  DomainId,
   GalleryDocument,
   GenerateRequest,
   Health,
@@ -9,8 +10,11 @@ import type {
   Job,
   JobStatus,
   Language,
+  FinanceStatementData,
+  HRRecordData,
   LegalContractData,
   MedicalNoteData,
+  RetailProductData,
   Provider,
   RuleCheck,
   SupportConversationData,
@@ -140,11 +144,15 @@ export function normalizeDocument(value: unknown, index = 0): GalleryDocument {
   const medicalNote = record(source.medical_note ?? source.medicalNote);
   const conversation = record(source.conversation);
   const contract = record(source.contract);
+  const statement = record(source.statement);
+  const hrRecord = record(source.hr_record ?? source.hrRecord);
+  const product = record(source.product);
   const domain = text(source.domain, "invoices");
+  const structured = new Set(["healthcare", "support", "legal", "finance", "hr", "retail"]);
   const isHealthcare = domain === "healthcare";
   const isSupport = domain === "support";
   const isLegal = domain === "legal";
-  const isInvoice = !isHealthcare && !isSupport && !isLegal;
+  const isInvoice = !structured.has(domain);
   const score = percentScore(
     source.validation_score ?? source.score ?? source.accuracy ?? quality.score,
     94,
@@ -164,7 +172,13 @@ export function normalizeDocument(value: unknown, index = 0): GalleryDocument {
       ? "Synthetic support conversation"
       : isLegal
         ? "Synthetic legal contract"
-        : `Invoice · ${vendor || "Generated vendor"}`;
+        : domain === "finance"
+          ? "Synthetic finance statement"
+          : domain === "hr"
+            ? "Synthetic HR record"
+            : domain === "retail"
+              ? "Synthetic retail product"
+              : `Invoice · ${vendor || "Generated vendor"}`;
 
   return {
     id: text(source.id ?? source.document_id ?? source.invoice_number, `document-${index + 1}`),
@@ -190,6 +204,9 @@ export function normalizeDocument(value: unknown, index = 0): GalleryDocument {
     medicalNote: Object.keys(medicalNote).length ? (medicalNote as unknown as MedicalNoteData) : undefined,
     conversation: Object.keys(conversation).length ? (conversation as unknown as SupportConversationData) : undefined,
     contract: Object.keys(contract).length ? (contract as unknown as LegalContractData) : undefined,
+    statement: Object.keys(statement).length ? (statement as unknown as FinanceStatementData) : undefined,
+    hrRecord: Object.keys(hrRecord).length ? (hrRecord as unknown as HRRecordData) : undefined,
+    product: Object.keys(product).length ? (product as unknown as RetailProductData) : undefined,
   };
 }
 
@@ -244,7 +261,7 @@ export function normalizeDomains(value: unknown): Domain[] {
 export function normalizeBenchmark(value: unknown, index = 0): BenchmarkResult {
   const source = record(value);
   const rawDomain = text(source.domain, "invoices");
-  const domain = rawDomain === "healthcare" || rawDomain === "support" || rawDomain === "legal" ? rawDomain : "invoices";
+  const domain = (["healthcare", "support", "legal", "finance", "hr", "retail"].includes(rawDomain) ? rawDomain : "invoices") as DomainId;
   return {
     id: text(source.id ?? source.benchmark_id, `bench-${index + 1}`),
     name: text(source.name ?? source.label, "Cross-domain quality benchmark"),

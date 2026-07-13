@@ -138,6 +138,38 @@ describe("API response normalizers", () => {
     expect(document.fileUrls.json).toBe("/backend-artifacts/support-conversations.json");
   });
 
+  it("normalizes finance statements without invoice fallback fields", () => {
+    const document = normalizeDocument({
+      id: "fin-1",
+      title: "Income Statement · FIN-000033-0001",
+      domain: "finance",
+      language: "hi-IN",
+      validation_score: 100,
+      statement: {
+        statement_id: "FIN-000033-0001",
+        statement_type: "income-statement",
+        title: "Income Statement",
+        language: "hi-IN",
+        entity_id: "SYN-ENT-00003301",
+        entity_name: "Nova Ledger Labs Pvt Ltd",
+        period_start: "2025-01-01",
+        period_end: "2025-12-31",
+        currency: "INR",
+        line_items: [{ line_id: 1, account_code: "4000", label: "Revenue", amount: "1000.00", side: "credit" }],
+        total_debits: "0.00",
+        total_credits: "1000.00",
+        net_position: "-1000.00",
+        synthetic: true,
+        disclaimer: "Synthetic financial statement. Not an audited report and not for investment decisions.",
+      },
+      rules: [{ id: "totals", label: "Totals", passed: true }],
+      file_urls: { json: "/artifacts/finance-statements.json" },
+    });
+    expect(document.domain).toBe("finance");
+    expect(document.statement?.entity_id).toBe("SYN-ENT-00003301");
+    expect(document.vendor).toBeUndefined();
+  });
+
   it("normalizes legal contracts without invoice fallback fields", () => {
     const document = normalizeDocument({
       id: "legal-1",

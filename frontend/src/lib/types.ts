@@ -1,10 +1,13 @@
 export type Provider = "offline" | "nemo";
 export type Language = "en-IN" | "hi-IN" | "gu-IN";
-export type DomainId = "invoices" | "healthcare" | "support" | "legal";
+export type DomainId = "invoices" | "healthcare" | "support" | "legal" | "finance" | "hr" | "retail";
 export type ClinicalProfile = "mixed" | "respiratory" | "cardiovascular" | "general";
 export type SupportIndustry = "mixed" | "telecom" | "ecommerce" | "banking" | "saas";
 export type SentimentArc = "recovery" | "steady-positive" | "escalation";
 export type LegalDocumentType = "mixed" | "nda" | "service-agreement" | "msa";
+export type FinanceStatementType = "mixed" | "balance-sheet" | "income-statement" | "cash-flow";
+export type HRDocumentType = "mixed" | "offer-letter" | "performance-review" | "onboarding-checklist";
+export type RetailCategory = "mixed" | "electronics" | "home" | "apparel" | "grocery";
 
 export interface DegradationConfig {
   noise: number;
@@ -25,6 +28,9 @@ export interface GenerateRequest {
   healthcare: { clinical_profile: ClinicalProfile; include_medications: boolean };
   support: { industry: SupportIndustry; sentiment_arc: SentimentArc; max_turns: number };
   legal: { document_type: LegalDocumentType; max_clauses: number };
+  finance: { statement_type: FinanceStatementType; max_lines: number };
+  hr: { document_type: HRDocumentType; max_sections: number };
+  retail: { category: RetailCategory; max_reviews: number };
 }
 
 export type JobStatus = "queued" | "running" | "completed" | "failed";
@@ -95,7 +101,62 @@ export interface LegalContractData {
   disclaimer: string;
 }
 
+export interface FinanceStatementData {
+  statement_id: string;
+  statement_type: Exclude<FinanceStatementType, "mixed">;
+  title: string;
+  language: Language;
+  entity_id: string;
+  entity_name: string;
+  period_start: string;
+  period_end: string;
+  currency: "INR";
+  line_items: Array<{ line_id: number; account_code: string; label: string; amount: string; side: "debit" | "credit" }>;
+  total_debits: string;
+  total_credits: string;
+  net_position: string;
+  synthetic: true;
+  disclaimer: string;
+}
+
+export interface HRRecordData {
+  record_id: string;
+  document_type: Exclude<HRDocumentType, "mixed">;
+  title: string;
+  language: Language;
+  employee_id: string;
+  employee_name: string;
+  department: string;
+  role_title: string;
+  employment_type: "full-time" | "contract" | "intern";
+  location: string;
+  effective_date: string;
+  annual_ctc_inr: string;
+  sections: Array<{ section_id: number; title: string; body: string }>;
+  synthetic: true;
+  disclaimer: string;
+}
+
+export interface RetailProductData {
+  product_id: string;
+  sku: string;
+  title: string;
+  language: Language;
+  category: Exclude<RetailCategory, "mixed">;
+  brand: string;
+  list_price_inr: string;
+  sale_price_inr: string;
+  inventory_units: number;
+  rating_average: number;
+  review_count: number;
+  listed_on: string;
+  reviews: Array<{ review_id: number; rating: number; title: string; body: string; reviewer_id: string }>;
+  synthetic: true;
+  disclaimer: string;
+}
+
 export interface GalleryDocument {
+
   id: string;
   title: string;
   domain: string;
@@ -119,6 +180,9 @@ export interface GalleryDocument {
   medicalNote?: MedicalNoteData;
   conversation?: SupportConversationData;
   contract?: LegalContractData;
+  statement?: FinanceStatementData;
+  hrRecord?: HRRecordData;
+  product?: RetailProductData;
 }
 
 export interface Job {

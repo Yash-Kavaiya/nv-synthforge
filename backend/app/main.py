@@ -17,15 +17,21 @@ from app.providers.nemo import NemoInvoiceProvider
 from app.services.artifacts import ArtifactExporter, DegradationConfig, InvoiceRenderer, StructuredArtifactExporter
 from app.services.benchmarking import benchmark_for
 from app.services.generation import OfflineInvoiceGenerator
+from app.services.finance_generation import OfflineFinanceGenerator
 from app.services.healthcare_generation import OfflineHealthcareGenerator
+from app.services.hr_generation import OfflineHRGenerator
 from app.services.legal_generation import OfflineLegalGenerator
+from app.services.retail_generation import OfflineRetailGenerator
 from app.services.support_generation import OfflineSupportGenerator
 from app.services.persistence import SQLiteRepository
 from app.services.quality import (
     QualityReport,
+    validate_finance_statement,
+    validate_hr_record,
     validate_invoice,
     validate_legal_contract,
     validate_medical_note,
+    validate_retail_product,
     validate_support_conversation,
 )
 
@@ -72,10 +78,31 @@ class LegalRequest(BaseModel):
     max_clauses: int = Field(default=6, ge=3, le=8)
 
 
+class FinanceRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    statement_type: Literal["mixed", "balance-sheet", "income-statement", "cash-flow"] = "mixed"
+    max_lines: int = Field(default=6, ge=3, le=8)
+
+
+class HRRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    document_type: Literal["mixed", "offer-letter", "performance-review", "onboarding-checklist"] = "mixed"
+    max_sections: int = Field(default=4, ge=3, le=6)
+
+
+class RetailRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    category: Literal["mixed", "electronics", "home", "apparel", "grocery"] = "mixed"
+    max_reviews: int = Field(default=3, ge=1, le=5)
+
+
 class GenerateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    domain: Literal["invoices", "invoice", "healthcare", "support", "legal"] = "invoices"
+    domain: Literal["invoices", "invoice", "healthcare", "support", "legal", "finance", "hr", "retail"] = "invoices"
     count: int = Field(default=1, ge=1, le=100)
     seed: int = Field(default=42, ge=0, le=2_147_483_647)
     provider: Literal["offline", "nemo"] = "offline"
@@ -86,6 +113,9 @@ class GenerateRequest(BaseModel):
     healthcare: HealthcareRequest = Field(default_factory=HealthcareRequest)
     support: SupportRequest = Field(default_factory=SupportRequest)
     legal: LegalRequest = Field(default_factory=LegalRequest)
+    finance: FinanceRequest = Field(default_factory=FinanceRequest)
+    hr: HRRequest = Field(default_factory=HRRequest)
+    retail: RetailRequest = Field(default_factory=RetailRequest)
 
 
 class BenchmarkRequest(BaseModel):
@@ -180,6 +210,68 @@ def _legal_quality_rules(report: QualityReport) -> list[dict[str, Any]]:
     ]
 
 
+
+
+def _finance_quality_rules(report: QualityReport) -> list[dict[str, Any]]:
+    messages = {violation.rule: violation.message for violation in report.violations}
+    definitions = [
+        ("synthetic_disclaimer", "Explicitly marked as synthetic"),
+        ("pseudonymous_identity", "Entity identity is synthetic"),
+        ("period_window", "Reporting period is valid"),
+        ("totals", "Debits and credits reconcile"),
+        ("net_position", "Net position matches totals"),
+    ]
+    return [
+        {
+            "id": rule_id,
+            "label": label,
+            "passed": rule_id not in messages,
+            "detail": messages.get(rule_id, "Passed deterministic validation"),
+        }
+        for rule_id, label in definitions
+    ]
+
+
+def _hr_quality_rules(report: QualityReport) -> list[dict[str, Any]]:
+    messages = {violation.rule: violation.message for violation in report.violations}
+    definitions = [
+        ("synthetic_disclaimer", "Explicitly marked as synthetic"),
+        ("pseudonymous_identity", "Employee identity is synthetic"),
+        ("compensation", "Compensation is positive"),
+        ("section_structure", "Sections are sequential and complete"),
+        ("section_content", "Section bodies are present"),
+    ]
+    return [
+        {
+            "id": rule_id,
+            "label": label,
+            "passed": rule_id not in messages,
+            "detail": messages.get(rule_id, "Passed deterministic validation"),
+        }
+        for rule_id, label in definitions
+    ]
+
+
+def _retail_quality_rules(report: QualityReport) -> list[dict[str, Any]]:
+    messages = {violation.rule: violation.message for violation in report.violations}
+    definitions = [
+        ("synthetic_disclaimer", "Explicitly marked as synthetic"),
+        ("sku_pattern", "SKU uses synthetic pattern"),
+        ("pricing", "Pricing is internally consistent"),
+        ("review_structure", "Reviews are sequential"),
+        ("rating_average", "Average rating matches reviews"),
+    ]
+    return [
+        {
+            "id": rule_id,
+            "label": label,
+            "passed": rule_id not in messages,
+            "detail": messages.get(rule_id, "Passed deterministic validation"),
+        }
+        for rule_id, label in definitions
+    ]
+
+
 def _public_job(job: dict[str, Any]) -> dict[str, Any]:
     value = dict(job)
     value["progress"] = round(float(value.get("progress", 0)) * 100, 1)
@@ -220,6 +312,187 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
         started = time.perf_counter()
         try:
             repository.update_job(job_id, status="running", progress=0.05)
+
+            if request.domain == "finance":
+                if request.provider != "offline":
+                    raise ValueError("NeMo generation is not yet configured for the finance domain; use provider='offline'")
+                statements = OfflineFinanceGenerator().generate(
+                    request.count,
+                    request.seed,
+                    request.language,
+                    statement_type=request.finance.statement_type,
+                    max_lines=request.finance.max_lines,
+                )
+                repository.update_job(job_id, progress=0.35)
+                job_dir = artifacts_root / job_id
+                records = [statement.model_dump(mode="json") for statement in statements]
+                documents: list[dict[str, Any]] = []
+                quality_scores: list[float] = []
+                for index, statement in enumerate(statements, start=1):
+                    report = validate_finance_statement(statement)
+                    score = round(report.score * 100, 1)
+                    quality_scores.append(score)
+                    documents.append(
+                        {
+                            "id": f"{job_id}-finance-statement-{index}",
+                            "title": f"{statement.title} · {statement.statement_id}",
+                            "domain": "finance",
+                            "language": request.language,
+                            "provider": request.provider,
+                            "statement_id": statement.statement_id,
+                            "statement_type": statement.statement_type,
+                            "validation_score": score,
+                            "status": "validated" if report.valid else "review",
+                            "rules": _finance_quality_rules(report),
+                            "file_urls": {},
+                            "statement": statement.model_dump(mode="json"),
+                        }
+                    )
+                    repository.update_job(job_id, progress=0.35 + 0.45 * index / max(len(statements), 1))
+                exports = StructuredArtifactExporter(job_dir).export(records, "finance-statements")
+                json_url = ""
+                for artifact in exports:
+                    relative = artifact.path.relative_to(artifacts_root).as_posix()
+                    repository.add_artifact(job_id, kind=artifact.kind, path=relative, size=artifact.path.stat().st_size)
+                    if artifact.kind == "json":
+                        json_url = f"/artifacts/{relative}"
+                for document in documents:
+                    document["file_urls"]["json"] = json_url
+                elapsed = max(time.perf_counter() - started, 0.001)
+                repository.update_job(
+                    job_id,
+                    status="completed",
+                    progress=1.0,
+                    result={
+                        "results": documents,
+                        "quality_score": round(sum(quality_scores) / len(quality_scores), 1),
+                        "document_count": len(documents),
+                        "duration_ms": round(elapsed * 1000, 2),
+                        "throughput": round(len(documents) / elapsed, 2),
+                    },
+                )
+                return
+
+            if request.domain == "hr":
+                if request.provider != "offline":
+                    raise ValueError("NeMo generation is not yet configured for the hr domain; use provider='offline'")
+                hr_records = OfflineHRGenerator().generate(
+                    request.count,
+                    request.seed,
+                    request.language,
+                    document_type=request.hr.document_type,
+                    max_sections=request.hr.max_sections,
+                )
+                repository.update_job(job_id, progress=0.35)
+                job_dir = artifacts_root / job_id
+                records = [record.model_dump(mode="json") for record in hr_records]
+                documents = []
+                quality_scores = []
+                for index, record in enumerate(hr_records, start=1):
+                    report = validate_hr_record(record)
+                    score = round(report.score * 100, 1)
+                    quality_scores.append(score)
+                    documents.append(
+                        {
+                            "id": f"{job_id}-hr-record-{index}",
+                            "title": f"{record.title} · {record.record_id}",
+                            "domain": "hr",
+                            "language": request.language,
+                            "provider": request.provider,
+                            "record_id": record.record_id,
+                            "document_type": record.document_type,
+                            "validation_score": score,
+                            "status": "validated" if report.valid else "review",
+                            "rules": _hr_quality_rules(report),
+                            "file_urls": {},
+                            "hr_record": record.model_dump(mode="json"),
+                        }
+                    )
+                    repository.update_job(job_id, progress=0.35 + 0.45 * index / max(len(hr_records), 1))
+                exports = StructuredArtifactExporter(job_dir).export(records, "hr-records")
+                json_url = ""
+                for artifact in exports:
+                    relative = artifact.path.relative_to(artifacts_root).as_posix()
+                    repository.add_artifact(job_id, kind=artifact.kind, path=relative, size=artifact.path.stat().st_size)
+                    if artifact.kind == "json":
+                        json_url = f"/artifacts/{relative}"
+                for document in documents:
+                    document["file_urls"]["json"] = json_url
+                elapsed = max(time.perf_counter() - started, 0.001)
+                repository.update_job(
+                    job_id,
+                    status="completed",
+                    progress=1.0,
+                    result={
+                        "results": documents,
+                        "quality_score": round(sum(quality_scores) / len(quality_scores), 1),
+                        "document_count": len(documents),
+                        "duration_ms": round(elapsed * 1000, 2),
+                        "throughput": round(len(documents) / elapsed, 2),
+                    },
+                )
+                return
+
+            if request.domain == "retail":
+                if request.provider != "offline":
+                    raise ValueError("NeMo generation is not yet configured for the retail domain; use provider='offline'")
+                products = OfflineRetailGenerator().generate(
+                    request.count,
+                    request.seed,
+                    request.language,
+                    category=request.retail.category,
+                    max_reviews=request.retail.max_reviews,
+                )
+                repository.update_job(job_id, progress=0.35)
+                job_dir = artifacts_root / job_id
+                records = [product.model_dump(mode="json") for product in products]
+                documents = []
+                quality_scores = []
+                for index, product in enumerate(products, start=1):
+                    report = validate_retail_product(product)
+                    score = round(report.score * 100, 1)
+                    quality_scores.append(score)
+                    documents.append(
+                        {
+                            "id": f"{job_id}-retail-product-{index}",
+                            "title": f"{product.title} · {product.product_id}",
+                            "domain": "retail",
+                            "language": request.language,
+                            "provider": request.provider,
+                            "product_id": product.product_id,
+                            "category": product.category,
+                            "validation_score": score,
+                            "status": "validated" if report.valid else "review",
+                            "rules": _retail_quality_rules(report),
+                            "file_urls": {},
+                            "product": product.model_dump(mode="json"),
+                        }
+                    )
+                    repository.update_job(job_id, progress=0.35 + 0.45 * index / max(len(products), 1))
+                exports = StructuredArtifactExporter(job_dir).export(records, "retail-products")
+                json_url = ""
+                for artifact in exports:
+                    relative = artifact.path.relative_to(artifacts_root).as_posix()
+                    repository.add_artifact(job_id, kind=artifact.kind, path=relative, size=artifact.path.stat().st_size)
+                    if artifact.kind == "json":
+                        json_url = f"/artifacts/{relative}"
+                for document in documents:
+                    document["file_urls"]["json"] = json_url
+                elapsed = max(time.perf_counter() - started, 0.001)
+                repository.update_job(
+                    job_id,
+                    status="completed",
+                    progress=1.0,
+                    result={
+                        "results": documents,
+                        "quality_score": round(sum(quality_scores) / len(quality_scores), 1),
+                        "document_count": len(documents),
+                        "duration_ms": round(elapsed * 1000, 2),
+                        "throughput": round(len(documents) / elapsed, 2),
+                    },
+                )
+                return
+
             if request.domain == "legal":
                 if request.provider != "offline":
                     raise ValueError("NeMo generation is not yet configured for the legal domain; use provider='offline'")
@@ -541,11 +814,6 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     @application.get("/api/v1/domains", tags=["domains"])
     def domains() -> dict[str, Any]:
         registered = list_domains()
-        planned = [
-            ("finance", "Finance", "Statements and reconciled financial reports"),
-            ("hr", "HR & Recruiting", "Resumes, offers, and performance reviews"),
-            ("retail", "Retail", "Products, reviews, and commerce support data"),
-        ]
         items = [
             {
                 "id": "invoices" if domain.slug == "invoice" else domain.slug,
@@ -557,10 +825,6 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
             }
             for domain in registered
         ]
-        items.extend(
-            {"id": slug, "slug": slug, "name": name, "description": description, "available": False, "supports": ["json"]}
-            for slug, name, description in planned
-        )
         return {"domains": items}
 
     @application.post("/api/v1/generate", status_code=status.HTTP_202_ACCEPTED, tags=["generation"])

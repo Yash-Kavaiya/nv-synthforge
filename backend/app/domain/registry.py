@@ -34,6 +34,24 @@ _DOMAINS = {
         description="NDAs, service agreements, and MSAs with clause libraries, risk flags, and synthetic party identifiers.",
         supports={"json"},
     ),
+    "finance": DomainDefinition(
+        slug="finance",
+        name="Finance Statements",
+        description="Balance sheets, income statements, and cash-flow records with reconciled debit/credit totals.",
+        supports={"json"},
+    ),
+    "hr": DomainDefinition(
+        slug="hr",
+        name="HR & Recruiting",
+        description="Offer letters, performance reviews, and onboarding checklists with pseudonymous employee IDs.",
+        supports={"json"},
+    ),
+    "retail": DomainDefinition(
+        slug="retail",
+        name="Retail Catalog",
+        description="Product listings with pricing, inventory, and synthetic customer reviews.",
+        supports={"json"},
+    ),
 }
 
 

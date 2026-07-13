@@ -1,4 +1,4 @@
-import { Activity, Bot, FileText, Headphones, HeartPulse, MessageSquareText, Scale, ShieldCheck, Stethoscope, UserRound } from "lucide-react";
+import { Activity, Bot, BriefcaseBusiness, CircleDollarSign, FileText, Headphones, HeartPulse, MessageSquareText, Scale, ShieldCheck, ShoppingBag, Stethoscope, UserRound } from "lucide-react";
 import type { GalleryDocument } from "@/lib/types";
 import { InvoicePreview } from "./invoice-preview";
 
@@ -11,6 +11,15 @@ export function DocumentPreview({ document, compact = false }: { document: Galle
   }
   if (document.domain === "legal" && document.contract) {
     return <LegalContractPreview document={document} compact={compact} />;
+  }
+  if (document.domain === "finance" && document.statement) {
+    return <FinanceStatementPreview document={document} compact={compact} />;
+  }
+  if (document.domain === "hr" && document.hrRecord) {
+    return <HRRecordPreview document={document} compact={compact} />;
+  }
+  if (document.domain === "retail" && document.product) {
+    return <RetailProductPreview document={document} compact={compact} />;
   }
   return <InvoicePreview document={document} compact={compact} />;
 }
@@ -129,6 +138,103 @@ function LegalContractPreview({ document, compact }: { document: GalleryDocument
       </div>
       {compact && contract.clauses.length > clauses.length ? <p className="legal-more">+ {contract.clauses.length - clauses.length} additional clauses</p> : null}
       <footer className="legal-footer"><FileText aria-hidden="true" /> {contract.disclaimer}</footer>
+    </div>
+  );
+}
+
+function FinanceStatementPreview({ document, compact }: { document: GalleryDocument; compact: boolean }) {
+  const statement = document.statement!;
+  const lines = compact ? statement.line_items.slice(0, 4) : statement.line_items;
+  return (
+    <div className={compact ? "manifest finance-statement finance-compact" : "manifest finance-statement"}>
+      <div className="finance-accent" />
+      <header className="finance-head">
+        <div className="finance-brand"><span><CircleDollarSign aria-hidden="true" /></span><div><small>NV / FINANCE</small><h2>{statement.title}</h2></div></div>
+        <span className="synthetic-chip"><ShieldCheck aria-hidden="true" /> SYNTHETIC</span>
+      </header>
+      <section className="finance-meta">
+        <div><small>STATEMENT</small><strong>{statement.statement_id}</strong></div>
+        <div><small>ENTITY</small><strong>{statement.entity_name}</strong></div>
+        <div><small>PERIOD</small><strong>{statement.period_start} → {statement.period_end}</strong></div>
+        <div><small>NET</small><strong>₹{statement.net_position}</strong></div>
+      </section>
+      <div className="finance-lines">
+        {lines.map((line) => (
+          <article key={line.line_id}>
+            <span>{line.account_code}</span>
+            <strong>{line.label}</strong>
+            <i>{line.side}</i>
+            <em>₹{line.amount}</em>
+          </article>
+        ))}
+      </div>
+      {compact && statement.line_items.length > lines.length ? <p className="finance-more">+ {statement.line_items.length - lines.length} line items</p> : null}
+      <footer className="finance-footer"><ShieldCheck aria-hidden="true" /> {statement.disclaimer}</footer>
+    </div>
+  );
+}
+
+function HRRecordPreview({ document, compact }: { document: GalleryDocument; compact: boolean }) {
+  const record = document.hrRecord!;
+  const sections = compact ? record.sections.slice(0, 3) : record.sections;
+  return (
+    <div className={compact ? "manifest hr-record hr-compact" : "manifest hr-record"}>
+      <div className="hr-accent" />
+      <header className="hr-head">
+        <div className="hr-brand"><span><BriefcaseBusiness aria-hidden="true" /></span><div><small>NV / HR</small><h2>{record.title}</h2></div></div>
+        <span className="synthetic-chip"><ShieldCheck aria-hidden="true" /> SYNTHETIC</span>
+      </header>
+      <section className="hr-meta">
+        <div><small>RECORD</small><strong>{record.record_id}</strong></div>
+        <div><small>EMPLOYEE</small><strong>{record.employee_name}</strong></div>
+        <div><small>ROLE</small><strong>{record.role_title}</strong></div>
+        <div><small>CTC</small><strong>₹{record.annual_ctc_inr}</strong></div>
+      </section>
+      <div className="hr-sections">
+        {sections.map((section) => (
+          <article key={section.section_id}>
+            <span>{section.section_id}</span>
+            <div><strong>{section.title}</strong><p>{section.body}</p></div>
+          </article>
+        ))}
+      </div>
+      {compact && record.sections.length > sections.length ? <p className="hr-more">+ {record.sections.length - sections.length} sections</p> : null}
+      <footer className="hr-footer"><ShieldCheck aria-hidden="true" /> {record.disclaimer}</footer>
+    </div>
+  );
+}
+
+function RetailProductPreview({ document, compact }: { document: GalleryDocument; compact: boolean }) {
+  const product = document.product!;
+  const reviews = compact ? product.reviews.slice(0, 2) : product.reviews;
+  return (
+    <div className={compact ? "manifest retail-product retail-compact" : "manifest retail-product"}>
+      <div className="retail-accent" />
+      <header className="retail-head">
+        <div className="retail-brand"><span><ShoppingBag aria-hidden="true" /></span><div><small>NV / RETAIL</small><h2>{product.title}</h2></div></div>
+        <span className="synthetic-chip"><ShieldCheck aria-hidden="true" /> SYNTHETIC</span>
+      </header>
+      <section className="retail-meta">
+        <div><small>PRODUCT</small><strong>{product.product_id}</strong></div>
+        <div><small>SKU</small><strong>{product.sku}</strong></div>
+        <div><small>PRICE</small><strong>₹{product.sale_price_inr}</strong></div>
+        <div><small>RATING</small><strong>{product.rating_average} ★</strong></div>
+      </section>
+      <section className="retail-summary">
+        <div><small>BRAND</small><strong>{product.brand}</strong></div>
+        <div><small>CATEGORY</small><strong>{product.category}</strong></div>
+        <div><small>STOCK</small><strong>{product.inventory_units} units</strong></div>
+      </section>
+      <div className="retail-reviews">
+        {reviews.map((review) => (
+          <article key={review.review_id}>
+            <div><strong>{review.title}</strong><span>{review.rating} ★</span></div>
+            <p>{review.body}</p>
+          </article>
+        ))}
+      </div>
+      {compact && product.reviews.length > reviews.length ? <p className="retail-more">+ {product.reviews.length - reviews.length} reviews</p> : null}
+      <footer className="retail-footer"><ShieldCheck aria-hidden="true" /> {product.disclaimer}</footer>
     </div>
   );
 }

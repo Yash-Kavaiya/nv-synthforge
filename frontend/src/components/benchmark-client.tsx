@@ -13,6 +13,9 @@ const demoBenchmarks: BenchmarkResult[] = [
   { id: "demo-clinical", name: "Labeled demo · Clinical note quality", domain: "healthcare", metricScope: "SOAP completeness, ICD-10, and vital-sign consistency", score: 97.8, latencyMs: 118.2, throughput: 8.4, createdAt: "2026-07-11T11:10:00Z" },
   { id: "demo-support", name: "Labeled demo · Support conversation quality", domain: "support", metricScope: "turn structure, resolution, and sentiment-arc consistency", score: 99.1, latencyMs: 96.4, throughput: 10.1, createdAt: "2026-07-10T09:45:00Z" },
   { id: "demo-legal", name: "Labeled demo · Legal contract quality", domain: "legal", metricScope: "synthetic parties, clause structure, and confidentiality consistency", score: 98.9, latencyMs: 104.3, throughput: 9.2, createdAt: "2026-07-09T14:20:00Z" },
+  { id: "demo-finance", name: "Labeled demo · Finance statement quality", domain: "finance", metricScope: "period window and debit/credit reconciliation", score: 98.2, latencyMs: 88.1, throughput: 11.4, createdAt: "2026-07-08T16:05:00Z" },
+  { id: "demo-hr", name: "Labeled demo · HR record quality", domain: "hr", metricScope: "employee identity and section structure", score: 97.6, latencyMs: 92.7, throughput: 10.8, createdAt: "2026-07-07T12:40:00Z" },
+  { id: "demo-retail", name: "Labeled demo · Retail product quality", domain: "retail", metricScope: "SKU pattern, pricing, and review-rating consistency", score: 99.0, latencyMs: 79.5, throughput: 12.6, createdAt: "2026-07-06T10:15:00Z" },
 ];
 
 export function BenchmarkClient() {
@@ -72,7 +75,7 @@ export function BenchmarkClient() {
         <div>
           <p className="eyebrow">EVALUATION PLANE / CROSS-DOMAIN</p>
           <h1>Quality Benchmarks</h1>
-          <p>Compare deterministic validity, generation latency, and throughput across invoices, clinical notes, support conversations, and legal contracts.</p>
+          <p>Compare deterministic validity, generation latency, and throughput across all seven synthetic domains.</p>
         </div>
         <div className="route-header-actions">
           <Button onClick={() => void load()} disabled={loading}><RefreshCw className={loading ? "animate-spin" : ""} aria-hidden="true" /> Refresh</Button>

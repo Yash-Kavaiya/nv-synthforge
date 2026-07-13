@@ -4,9 +4,12 @@ from decimal import Decimal
 
 from pydantic import BaseModel
 
+from app.domain.finance import FinanceStatement
 from app.domain.healthcare import MedicalNote
+from app.domain.hr import HRRecord
 from app.domain.invoice import Invoice, money
 from app.domain.legal import LegalContract
+from app.domain.retail import RetailProduct
 from app.domain.support import SupportConversation
 
 
@@ -104,5 +107,59 @@ def validate_legal_contract(contract: LegalContract) -> QualityReport:
         violations.append(Violation(rule="clause_structure", message="contracts require sequential clauses"))
     if not contract.confidentiality:
         violations.append(Violation(rule="confidentiality", message="generated contracts must include confidentiality coverage"))
+    score = max(0.0, round(1.0 - len(violations) / checks, 4))
+    return QualityReport(valid=not violations, score=score, violations=violations, rules_checked=checks)
+
+
+def validate_finance_statement(statement: FinanceStatement) -> QualityReport:
+    violations: list[Violation] = []
+    checks = 5
+    if not statement.synthetic or "synthetic" not in statement.disclaimer.lower():
+        violations.append(Violation(rule="synthetic_disclaimer", message="finance statement must be marked synthetic"))
+    if not statement.entity_id.startswith("SYN-ENT-"):
+        violations.append(Violation(rule="pseudonymous_identity", message="entity identifiers must be synthetic"))
+    if statement.period_end < statement.period_start:
+        violations.append(Violation(rule="period_window", message="period_end must be on or after period_start"))
+    debit_sum = sum((item.amount for item in statement.line_items if item.side == "debit"), Decimal("0"))
+    credit_sum = sum((item.amount for item in statement.line_items if item.side == "credit"), Decimal("0"))
+    if debit_sum != statement.total_debits or credit_sum != statement.total_credits:
+        violations.append(Violation(rule="totals", message="posted totals must match line items"))
+    if (statement.total_debits - statement.total_credits) != statement.net_position:
+        violations.append(Violation(rule="net_position", message="net position must equal debits minus credits"))
+    score = max(0.0, round(1.0 - len(violations) / checks, 4))
+    return QualityReport(valid=not violations, score=score, violations=violations, rules_checked=checks)
+
+
+def validate_hr_record(record: HRRecord) -> QualityReport:
+    violations: list[Violation] = []
+    checks = 5
+    if not record.synthetic or "synthetic" not in record.disclaimer.lower():
+        violations.append(Violation(rule="synthetic_disclaimer", message="HR record must be marked synthetic"))
+    if not record.employee_id.startswith("SYN-EMP-"):
+        violations.append(Violation(rule="pseudonymous_identity", message="employee identifiers must be synthetic"))
+    if record.annual_ctc_inr <= 0:
+        violations.append(Violation(rule="compensation", message="annual CTC must be positive"))
+    if len(record.sections) < 3 or [section.section_id for section in record.sections] != list(range(1, len(record.sections) + 1)):
+        violations.append(Violation(rule="section_structure", message="HR records require sequential sections"))
+    if any(not section.body.strip() for section in record.sections):
+        violations.append(Violation(rule="section_content", message="HR sections must include non-empty bodies"))
+    score = max(0.0, round(1.0 - len(violations) / checks, 4))
+    return QualityReport(valid=not violations, score=score, violations=violations, rules_checked=checks)
+
+
+def validate_retail_product(product: RetailProduct) -> QualityReport:
+    violations: list[Violation] = []
+    checks = 5
+    if not product.synthetic or "synthetic" not in product.disclaimer.lower():
+        violations.append(Violation(rule="synthetic_disclaimer", message="retail product must be marked synthetic"))
+    if not product.sku.startswith("SKU-"):
+        violations.append(Violation(rule="sku_pattern", message="retail SKUs must use the synthetic SKU pattern"))
+    if product.sale_price_inr > product.list_price_inr or product.list_price_inr <= 0:
+        violations.append(Violation(rule="pricing", message="sale price must be positive and not exceed list price"))
+    if product.review_count != len(product.reviews) or [review.review_id for review in product.reviews] != list(range(1, len(product.reviews) + 1)):
+        violations.append(Violation(rule="review_structure", message="reviews must be sequential and match review_count"))
+    average = sum(review.rating for review in product.reviews) / max(len(product.reviews), 1)
+    if abs(average - product.rating_average) > 0.05:
+        violations.append(Violation(rule="rating_average", message="rating average must match review ratings"))
     score = max(0.0, round(1.0 - len(violations) / checks, 4))
     return QualityReport(valid=not violations, score=score, violations=violations, rules_checked=checks)

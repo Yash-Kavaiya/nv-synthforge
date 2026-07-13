@@ -5,9 +5,9 @@ export const fallbackDomains: Domain[] = [
   { id: "healthcare", name: "Healthcare", description: "Privacy-safe SOAP notes with ICD-10, vitals, and medication controls.", available: true, generated: 6840, accuracy: 96.4 },
   { id: "legal", name: "Legal", description: "NDAs, service agreements, and MSAs with clause libraries and risk flags.", available: true, generated: 4920, accuracy: 97.1 },
   { id: "support", name: "Support", description: "Multi-turn conversations with industry, sentiment, and resolution controls.", available: true, generated: 9560, accuracy: 99.2 },
-  { id: "finance", name: "Finance", description: "Statements, reports, ledgers, and audit-ready tabular data.", available: false, generated: 7240, accuracy: 98.1 },
-  { id: "hr", name: "HR", description: "Employee letters, payroll forms, and onboarding documents.", available: false, generated: 3560, accuracy: 97.8 },
-  { id: "retail", name: "Retail", description: "Receipts, purchase orders, labels, and catalog records.", available: false, generated: 11280, accuracy: 98.9 },
+  { id: "finance", name: "Finance", description: "Balance sheets, income statements, and cash-flow with reconciled totals.", available: true, generated: 7240, accuracy: 98.1 },
+  { id: "hr", name: "HR", description: "Offer letters, performance reviews, and onboarding checklists.", available: true, generated: 3560, accuracy: 97.8 },
+  { id: "retail", name: "Retail", description: "Catalog products with pricing, inventory, and synthetic reviews.", available: true, generated: 11280, accuracy: 98.9 },
 ];
 
 const demoRules = [
