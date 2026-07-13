@@ -1,0 +1,70 @@
+import type { Domain, GalleryDocument } from "./types";
+
+export const fallbackDomains: Domain[] = [
+  { id: "invoices", name: "Invoice", description: "Multi-lingual invoices with line items, tax, and payment terms.", available: true, generated: 12840, accuracy: 98.7 },
+  { id: "healthcare", name: "Healthcare", description: "Privacy-safe SOAP notes with ICD-10, vitals, and medication controls.", available: true, generated: 6840, accuracy: 96.4 },
+  { id: "legal", name: "Legal", description: "Contracts, notices, clauses, and jurisdiction-aware templates.", available: false, generated: 4920, accuracy: 97.1 },
+  { id: "support", name: "Support", description: "Multi-turn conversations with industry, sentiment, and resolution controls.", available: true, generated: 9560, accuracy: 99.2 },
+  { id: "finance", name: "Finance", description: "Statements, reports, ledgers, and audit-ready tabular data.", available: false, generated: 7240, accuracy: 98.1 },
+  { id: "hr", name: "HR", description: "Employee letters, payroll forms, and onboarding documents.", available: false, generated: 3560, accuracy: 97.8 },
+  { id: "retail", name: "Retail", description: "Receipts, purchase orders, labels, and catalog records.", available: false, generated: 11280, accuracy: 98.9 },
+];
+
+const demoRules = [
+  { id: "totals", label: "Line items reconcile with grand total", passed: true, detail: "Subtotal + tax − discount = total" },
+  { id: "gstin", label: "GSTIN structure is valid", passed: true, detail: "State code and checksum present" },
+  { id: "dates", label: "Due date follows issue date", passed: true },
+  { id: "currency", label: "Currency is consistent", passed: true },
+  { id: "address", label: "Billing address completeness", passed: false, detail: "Postal code intentionally degraded" },
+];
+
+export const fallbackGallery: GalleryDocument[] = [
+  {
+    id: "inv_demo_0421",
+    title: "Invoice · Asterion Components",
+    domain: "invoices",
+    language: "en-IN",
+    provider: "offline",
+    createdAt: "2026-07-13T08:42:00.000Z",
+    validationScore: 96,
+    status: "validated",
+    amount: "₹ 84,960.00",
+    vendor: "Asterion Components Pvt. Ltd.",
+    invoiceNumber: "AST/26-27/0421",
+    dueDate: "28 Jul 2026",
+    fileUrls: {},
+    rules: demoRules,
+  },
+  {
+    id: "inv_demo_0418",
+    title: "Invoice · Prakash Industrial Supply",
+    domain: "invoices",
+    language: "hi-IN",
+    provider: "offline",
+    createdAt: "2026-07-13T07:18:00.000Z",
+    validationScore: 92,
+    status: "review",
+    amount: "₹ 1,24,500.00",
+    vendor: "Prakash Industrial Supply",
+    invoiceNumber: "PIS/2026/0418",
+    dueDate: "02 Aug 2026",
+    fileUrls: {},
+    rules: demoRules.map((rule, index) => index === 2 ? { ...rule, passed: false, detail: "Date overlap introduced by noise profile" } : rule),
+  },
+  {
+    id: "inv_demo_0407",
+    title: "Invoice · West Coast Logistics",
+    domain: "invoices",
+    language: "gu-IN",
+    provider: "nemo",
+    createdAt: "2026-07-12T16:07:00.000Z",
+    validationScore: 99,
+    status: "validated",
+    amount: "₹ 42,780.00",
+    vendor: "West Coast Logistics LLP",
+    invoiceNumber: "WCL-0726-407",
+    dueDate: "20 Jul 2026",
+    fileUrls: {},
+    rules: demoRules.map((rule) => ({ ...rule, passed: true })),
+  },
+];

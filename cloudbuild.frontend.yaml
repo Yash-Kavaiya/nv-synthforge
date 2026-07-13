@@ -1,0 +1,21 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --build-arg
+      - NEXT_PUBLIC_API_URL=${_NEXT_PUBLIC_API_URL}
+      - --tag
+      - ${_IMAGE}
+      - --file
+      - frontend/Dockerfile
+      - frontend
+
+images:
+  - ${_IMAGE}
+
+substitutions:
+  _IMAGE: REGION-docker.pkg.dev/PROJECT_ID/nv-synthforge/frontend:COMMIT_SHA
+  _NEXT_PUBLIC_API_URL: https://replace-with-api-url.example
+
+options:
+  logging: CLOUD_LOGGING_ONLY
