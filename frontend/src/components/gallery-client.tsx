@@ -68,7 +68,7 @@ export function GalleryClient() {
   const filtered = useMemo(() => {
     const search = query.trim().toLowerCase();
     return documents.filter((document) => {
-      const searchFields = [document.title, document.id, document.vendor, document.invoiceNumber, document.medicalNote?.note_id, document.medicalNote?.patient.name, document.medicalNote?.chief_complaint, document.medicalNote?.diagnoses[0]?.icd10_code, document.conversation?.conversation_id, document.conversation?.customer_id, document.conversation?.issue_type, document.conversation?.industry, ...(document.conversation?.turns.map((turn) => turn.text) ?? [])];
+      const searchFields = [document.title, document.id, document.vendor, document.invoiceNumber, document.medicalNote?.note_id, document.medicalNote?.patient.name, document.medicalNote?.chief_complaint, document.medicalNote?.diagnoses[0]?.icd10_code, document.conversation?.conversation_id, document.conversation?.customer_id, document.conversation?.issue_type, document.conversation?.industry, ...(document.conversation?.turns.map((turn) => turn.text) ?? []), document.contract?.contract_id, document.contract?.title, document.contract?.document_type, document.contract?.governing_law, ...(document.contract?.parties.map((party) => party.name) ?? []), ...(document.contract?.clauses.map((clause) => `${clause.title} ${clause.body}`) ?? [])];
       const matchesQuery = !search || searchFields
         .filter(Boolean)
         .some((value) => value?.toLowerCase().includes(search));

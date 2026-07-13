@@ -138,6 +138,41 @@ describe("API response normalizers", () => {
     expect(document.fileUrls.json).toBe("/backend-artifacts/support-conversations.json");
   });
 
+  it("normalizes legal contracts without invoice fallback fields", () => {
+    const document = normalizeDocument({
+      id: "legal-1",
+      title: "Mutual Non-Disclosure Agreement · LEG-000077-0001",
+      domain: "legal",
+      language: "gu-IN",
+      validation_score: 100,
+      contract: {
+        contract_id: "LEG-000077-0001",
+        document_type: "nda",
+        title: "Mutual Non-Disclosure Agreement",
+        language: "gu-IN",
+        effective_date: "2026-03-01",
+        term_months: 12,
+        governing_law: "Laws of Gujarat",
+        parties: [
+          { party_id: "SYN-PARTY-100001", name: "Nova Analytics Pvt Ltd", role: "disclosing_party", jurisdiction: "India" },
+          { party_id: "SYN-PARTY-200002", name: "Indigo Systems LLP", role: "receiving_party", jurisdiction: "India" },
+        ],
+        clauses: [{ clause_id: 1, title: "Purpose", body: "Evaluate collaboration.", risk_flag: "none" }],
+        confidentiality: true,
+        synthetic: true,
+        disclaimer: "Synthetic legal contract. Not legal advice and not an executed agreement.",
+      },
+      rules: [{ id: "clause_structure", label: "Clause structure", passed: true }],
+      file_urls: { json: "/artifacts/legal-contracts.json" },
+    });
+
+    expect(document.domain).toBe("legal");
+    expect(document.contract?.document_type).toBe("nda");
+    expect(document.contract?.parties).toHaveLength(2);
+    expect(document.vendor).toBeUndefined();
+    expect(document.fileUrls.json).toBe("/backend-artifacts/legal-contracts.json");
+  });
+
   it("preserves benchmark domain and metric scope", () => {
     expect(normalizeBenchmark({
       benchmark_id: "bench-support",
@@ -148,6 +183,17 @@ describe("API response normalizers", () => {
       id: "bench-support",
       domain: "support",
       metricScope: "turn structure and sentiment-arc consistency",
+    });
+
+    expect(normalizeBenchmark({
+      benchmark_id: "bench-legal",
+      domain: "legal",
+      metric_scope: "clause structure and confidentiality consistency",
+      score: 100,
+    })).toMatchObject({
+      id: "bench-legal",
+      domain: "legal",
+      metricScope: "clause structure and confidentiality consistency",
     });
   });
 });

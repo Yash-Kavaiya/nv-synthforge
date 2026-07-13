@@ -76,7 +76,7 @@ export function DashboardOverview() {
                 <div className="domain-card-top"><div className="domain-icon"><Icon aria-hidden="true" /></div>{domain.available ? <Badge tone="accent">READY</Badge> : <Badge>PLANNED</Badge>}</div>
                 <div><span className="domain-index">0{index + 1}</span><h3>{domain.name}</h3><p>{domain.description}</p></div>
                 <div className="domain-stats"><span><small>GENERATED</small><strong>{formatCompact(domain.generated)}</strong></span><span><small>VALIDATION</small><strong>{domain.accuracy ? `${domain.accuracy}%` : "—"}</strong></span></div>
-                {domain.available ? <Link href={`/studio?domain=${domain.id === "healthcare" ? "healthcare" : domain.id === "support" ? "support" : "invoices"}`} className="domain-link">Configure workbench <ArrowRight aria-hidden="true" /></Link> : <span className="domain-link domain-link-muted">Schema calibration in progress</span>}
+                {domain.available ? <Link href={`/studio?domain=${["healthcare", "support", "legal"].includes(domain.id) ? domain.id : "invoices"}`} className="domain-link">Configure workbench <ArrowRight aria-hidden="true" /></Link> : <span className="domain-link domain-link-muted">Schema calibration in progress</span>}
               </Card>
             );
           })}

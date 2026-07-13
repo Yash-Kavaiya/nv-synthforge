@@ -1,9 +1,10 @@
 export type Provider = "offline" | "nemo";
 export type Language = "en-IN" | "hi-IN" | "gu-IN";
-export type DomainId = "invoices" | "healthcare" | "support";
+export type DomainId = "invoices" | "healthcare" | "support" | "legal";
 export type ClinicalProfile = "mixed" | "respiratory" | "cardiovascular" | "general";
 export type SupportIndustry = "mixed" | "telecom" | "ecommerce" | "banking" | "saas";
 export type SentimentArc = "recovery" | "steady-positive" | "escalation";
+export type LegalDocumentType = "mixed" | "nda" | "service-agreement" | "msa";
 
 export interface DegradationConfig {
   noise: number;
@@ -23,6 +24,7 @@ export interface GenerateRequest {
   degradation: DegradationConfig;
   healthcare: { clinical_profile: ClinicalProfile; include_medications: boolean };
   support: { industry: SupportIndustry; sentiment_arc: SentimentArc; max_turns: number };
+  legal: { document_type: LegalDocumentType; max_clauses: number };
 }
 
 export type JobStatus = "queued" | "running" | "completed" | "failed";
@@ -78,6 +80,21 @@ export interface SupportConversationData {
   disclaimer: string;
 }
 
+export interface LegalContractData {
+  contract_id: string;
+  document_type: Exclude<LegalDocumentType, "mixed">;
+  title: string;
+  language: Language;
+  effective_date: string;
+  term_months: number;
+  governing_law: string;
+  parties: Array<{ party_id: string; name: string; role: string; jurisdiction: string }>;
+  clauses: Array<{ clause_id: number; title: string; body: string; risk_flag: "none" | "medium" | "high" }>;
+  confidentiality: boolean;
+  synthetic: true;
+  disclaimer: string;
+}
+
 export interface GalleryDocument {
   id: string;
   title: string;
@@ -101,6 +118,7 @@ export interface GalleryDocument {
   invoice?: InvoiceData;
   medicalNote?: MedicalNoteData;
   conversation?: SupportConversationData;
+  contract?: LegalContractData;
 }
 
 export interface Job {

@@ -7,10 +7,7 @@ export const metadata = {
 
 export default async function StudioPage({ searchParams }: { searchParams: Promise<{ domain?: string }> }) {
   const params = await searchParams;
-  const domain: DomainId = params.domain === "healthcare"
-    ? "healthcare"
-    : params.domain === "support"
-      ? "support"
-      : "invoices";
+  const allowed = new Set(["invoices", "healthcare", "support", "legal"]);
+  const domain: DomainId = allowed.has(params.domain ?? "") ? (params.domain as DomainId) : "invoices";
   return <StudioClient initialDomain={domain} />;
 }

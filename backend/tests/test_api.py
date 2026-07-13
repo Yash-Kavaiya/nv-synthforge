@@ -164,10 +164,50 @@ def test_customer_support_generation_is_available_through_jobs_and_gallery(tmp_p
         assert client.get("/api/v1/gallery").json()["items"][0]["domain"] == "support"
 
 
+def test_legal_generation_is_available_through_jobs_and_gallery(tmp_path: Path) -> None:
+    with TestClient(create_app(data_dir=tmp_path)) as client:
+        domains = client.get("/api/v1/domains").json()["domains"]
+        legal = next(item for item in domains if item["id"] == "legal")
+        assert legal["available"] is True
+
+        queued = client.post(
+            "/api/v1/generate",
+            json={
+                "domain": "legal",
+                "count": 2,
+                "seed": 77,
+                "provider": "offline",
+                "language": "gu-IN",
+                "render": False,
+                "degrade": False,
+                "legal": {"document_type": "nda", "max_clauses": 5},
+            },
+        )
+        assert queued.status_code == 202
+        job = wait_for_completion(client, queued.json()["job_id"])
+
+        assert job["status"] == "completed", job.get("error")
+        assert len(job["results"]) == 2
+        first = job["results"][0]
+        assert first["domain"] == "legal"
+        assert first["contract"]["synthetic"] is True
+        assert first["contract"]["document_type"] == "nda"
+        assert first["contract"]["language"] == "gu-IN"
+        assert first["contract"]["contract_id"].startswith("LEG-")
+        assert all(party["party_id"].startswith("SYN-PARTY-") for party in first["contract"]["parties"])
+        assert len(first["contract"]["clauses"]) == 5
+        assert any("\u0a80" <= character <= "\u0aff" for character in first["contract"]["clauses"][0]["body"])
+        assert first["validation_score"] == 100.0
+        assert len(first["rules"]) == 5
+        assert all(rule["passed"] for rule in first["rules"])
+        assert {artifact["kind"] for artifact in job["artifacts"]} >= {"json", "jsonl"}
+        assert client.get("/api/v1/gallery").json()["items"][0]["domain"] == "legal"
+
+
 def test_benchmarks_report_domain_specific_metric_scopes(tmp_path: Path) -> None:
     with TestClient(create_app(data_dir=tmp_path)) as client:
         job_ids: dict[str, str] = {}
-        for domain in ("invoices", "support", "healthcare"):
+        for domain in ("invoices", "support", "healthcare", "legal"):
             queued = client.post(
                 "/api/v1/generate",
                 json={
@@ -186,11 +226,13 @@ def test_benchmarks_report_domain_specific_metric_scopes(tmp_path: Path) -> None
 
         benchmarks = client.get("/api/v1/benchmarks").json()["benchmarks"]
         by_domain = {benchmark["domain"]: benchmark for benchmark in benchmarks}
-        assert set(by_domain) == {"invoices", "support", "healthcare"}
+        assert set(by_domain) == {"invoices", "support", "healthcare", "legal"}
         assert "GST" in by_domain["invoices"]["metric_scope"]
         assert "SOAP" in by_domain["healthcare"]["metric_scope"]
         assert "sentiment" in by_domain["support"]["metric_scope"]
+        assert "clause" in by_domain["legal"]["metric_scope"]
         assert by_domain["support"]["name"] == "Customer support conversation quality benchmark"
+        assert by_domain["legal"]["name"] == "Legal contract quality benchmark"
 
         support_benchmark = client.post(
             "/api/v1/benchmarks",
@@ -199,6 +241,14 @@ def test_benchmarks_report_domain_specific_metric_scopes(tmp_path: Path) -> None
         assert support_benchmark.status_code == 200
         assert support_benchmark.json()["domain"] == "support"
         assert support_benchmark.json()["score"] == 100.0
+
+        legal_benchmark = client.post(
+            "/api/v1/benchmarks",
+            json={"job_id": job_ids["legal"]},
+        )
+        assert legal_benchmark.status_code == 200
+        assert legal_benchmark.json()["domain"] == "legal"
+        assert legal_benchmark.json()["score"] == 100.0
 
 
 def test_generation_is_deterministic_and_nemo_missing_key_is_clear(tmp_path: Path, monkeypatch) -> None:

@@ -1,4 +1,4 @@
-import { Activity, Bot, Headphones, HeartPulse, MessageSquareText, ShieldCheck, Stethoscope, UserRound } from "lucide-react";
+import { Activity, Bot, FileText, Headphones, HeartPulse, MessageSquareText, Scale, ShieldCheck, Stethoscope, UserRound } from "lucide-react";
 import type { GalleryDocument } from "@/lib/types";
 import { InvoicePreview } from "./invoice-preview";
 
@@ -8,6 +8,9 @@ export function DocumentPreview({ document, compact = false }: { document: Galle
   }
   if (document.domain === "support" && document.conversation) {
     return <SupportConversationPreview document={document} compact={compact} />;
+  }
+  if (document.domain === "legal" && document.contract) {
+    return <LegalContractPreview document={document} compact={compact} />;
   }
   return <InvoicePreview document={document} compact={compact} />;
 }
@@ -86,6 +89,46 @@ function SupportConversationPreview({ document, compact }: { document: GalleryDo
       </div>
       {compact && conversation.turns.length > turns.length ? <p className="support-more">+ {conversation.turns.length - turns.length} validated turns</p> : null}
       <footer className="support-footer"><ShieldCheck aria-hidden="true" /> {conversation.disclaimer}</footer>
+    </div>
+  );
+}
+
+function LegalContractPreview({ document, compact }: { document: GalleryDocument; compact: boolean }) {
+  const contract = document.contract!;
+  const clauses = compact ? contract.clauses.slice(0, 3) : contract.clauses;
+
+  return (
+    <div className={compact ? "manifest legal-contract legal-compact" : "manifest legal-contract"}>
+      <div className="legal-accent" />
+      <header className="legal-head">
+        <div className="legal-brand"><span><Scale aria-hidden="true" /></span><div><small>NV / LEGAL</small><h2>{contract.title}</h2></div></div>
+        <span className="synthetic-chip"><ShieldCheck aria-hidden="true" /> SYNTHETIC</span>
+      </header>
+      <section className="legal-meta">
+        <div><small>CONTRACT</small><strong>{contract.contract_id}</strong></div>
+        <div><small>TYPE</small><strong>{contract.document_type}</strong></div>
+        <div><small>TERM</small><strong>{contract.term_months} mo</strong></div>
+        <div><small>LAW</small><strong>{contract.governing_law}</strong></div>
+      </section>
+      <section className="legal-parties">
+        {contract.parties.map((party) => (
+          <article key={party.party_id}>
+            <small>{party.role.replaceAll("_", " ")}</small>
+            <strong>{party.name}</strong>
+            <span>{party.party_id} · {party.jurisdiction}</span>
+          </article>
+        ))}
+      </section>
+      <div className="legal-clauses">
+        {clauses.map((clause) => (
+          <article key={clause.clause_id} className={`legal-clause risk-${clause.risk_flag}`}>
+            <div><span>{clause.clause_id}</span><strong>{clause.title}</strong><i>{clause.risk_flag}</i></div>
+            <p>{clause.body}</p>
+          </article>
+        ))}
+      </div>
+      {compact && contract.clauses.length > clauses.length ? <p className="legal-more">+ {contract.clauses.length - clauses.length} additional clauses</p> : null}
+      <footer className="legal-footer"><FileText aria-hidden="true" /> {contract.disclaimer}</footer>
     </div>
   );
 }

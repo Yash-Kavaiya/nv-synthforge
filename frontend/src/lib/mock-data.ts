@@ -3,7 +3,7 @@ import type { Domain, GalleryDocument } from "./types";
 export const fallbackDomains: Domain[] = [
   { id: "invoices", name: "Invoice", description: "Multi-lingual invoices with line items, tax, and payment terms.", available: true, generated: 12840, accuracy: 98.7 },
   { id: "healthcare", name: "Healthcare", description: "Privacy-safe SOAP notes with ICD-10, vitals, and medication controls.", available: true, generated: 6840, accuracy: 96.4 },
-  { id: "legal", name: "Legal", description: "Contracts, notices, clauses, and jurisdiction-aware templates.", available: false, generated: 4920, accuracy: 97.1 },
+  { id: "legal", name: "Legal", description: "NDAs, service agreements, and MSAs with clause libraries and risk flags.", available: true, generated: 4920, accuracy: 97.1 },
   { id: "support", name: "Support", description: "Multi-turn conversations with industry, sentiment, and resolution controls.", available: true, generated: 9560, accuracy: 99.2 },
   { id: "finance", name: "Finance", description: "Statements, reports, ledgers, and audit-ready tabular data.", available: false, generated: 7240, accuracy: 98.1 },
   { id: "hr", name: "HR", description: "Employee letters, payroll forms, and onboarding documents.", available: false, generated: 3560, accuracy: 97.8 },

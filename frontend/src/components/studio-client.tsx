@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Braces, Check, ChevronDown, CircleAlert, CloudCog, Cpu, Download, Eye, FileJson2, Gauge, Languages, LoaderCircle, RotateCcw, ShieldCheck, Sparkles, WandSparkles } from "lucide-react";
 import { api } from "@/lib/api";
 import { fallbackGallery } from "@/lib/mock-data";
-import type { ClinicalProfile, DomainId, GenerateRequest, Job, Language, Provider, SentimentArc, SupportIndustry } from "@/lib/types";
+import type { ClinicalProfile, DomainId, GenerateRequest, Job, Language, LegalDocumentType, Provider, SentimentArc, SupportIndustry } from "@/lib/types";
 import { DocumentPreview } from "./document-preview";
 import { ValidationRules } from "./invoice-preview";
 import { Badge, Button, Card, cn } from "./ui";
@@ -21,6 +21,7 @@ const invoiceDefaults: GenerateRequest = {
   degradation: { noise: 0.18, blur: 0.08, perspective: 0.12, stamps: 0.24 },
   healthcare: { clinical_profile: "mixed", include_medications: true },
   support: { industry: "mixed", sentiment_arc: "recovery", max_turns: 6 },
+  legal: { document_type: "mixed", max_clauses: 6 },
 };
 
 function defaultsFor(domain: DomainId): GenerateRequest {
@@ -30,6 +31,7 @@ function defaultsFor(domain: DomainId): GenerateRequest {
     degradation: { ...invoiceDefaults.degradation },
     healthcare: { ...invoiceDefaults.healthcare },
     support: { ...invoiceDefaults.support },
+    legal: { ...invoiceDefaults.legal },
   };
   return domain === "invoices"
     ? shared
@@ -81,7 +83,7 @@ export function StudioClient({ initialDomain = "invoices" }: { initialDomain?: D
         id,
         status: progress >= 100 ? "completed" : "running",
         progress,
-        message: progress >= 100 ? `${request.count} synthetic ${request.domain === "invoices" ? "invoices validated" : request.domain === "healthcare" ? "clinical notes forged" : "conversations synthesized"}` : progress > 68 ? "Running schema and validation checks" : "Rendering document variants",
+        message: progress >= 100 ? `${request.count} synthetic ${request.domain === "invoices" ? "invoices validated" : request.domain === "healthcare" ? "clinical notes forged" : request.domain === "legal" ? "contracts drafted" : "conversations synthesized"}` : progress > 68 ? "Running schema and validation checks" : "Rendering document variants",
         results: progress >= 100 ? fallbackGallery.slice(0, Math.min(3, request.count)).map((item, index) => ({ ...item, id: `${id}-${index}`, language: request.language, provider: request.provider, createdAt: new Date().toISOString() })) : [],
       });
       if (progress >= 100 && intervalRef.current) clearInterval(intervalRef.current);
@@ -154,14 +156,29 @@ export function StudioClient({ initialDomain = "invoices" }: { initialDomain?: D
 
   const isHealthcare = config.domain === "healthcare";
   const isSupport = config.domain === "support";
-  const isStructured = isHealthcare || isSupport;
-  const workbenchLabel = isHealthcare ? "HEALTHCARE WORKBENCH / V1.0" : isSupport ? "SUPPORT WORKBENCH / V1.0" : "INVOICE WORKBENCH / V1.4";
-  const studioTitle = isHealthcare ? "Clinical Note Studio" : isSupport ? "Conversation Studio" : "Invoice Studio";
+  const isLegal = config.domain === "legal";
+  const isStructured = isHealthcare || isSupport || isLegal;
+  const workbenchLabel = isHealthcare
+    ? "HEALTHCARE WORKBENCH / V1.0"
+    : isSupport
+      ? "SUPPORT WORKBENCH / V1.0"
+      : isLegal
+        ? "LEGAL WORKBENCH / V1.0"
+        : "INVOICE WORKBENCH / V1.4";
+  const studioTitle = isHealthcare
+    ? "Clinical Note Studio"
+    : isSupport
+      ? "Conversation Studio"
+      : isLegal
+        ? "Contract Studio"
+        : "Invoice Studio";
   const studioDescription = isHealthcare
     ? "Generate privacy-safe synthetic SOAP notes with pseudonymous identities and clinical validation."
     : isSupport
       ? "Generate deterministic multi-turn service conversations with sentiment and resolution validation."
-      : "Compose a reproducible synthetic document run, then inspect every validation signal.";
+      : isLegal
+        ? "Generate synthetic NDAs, service agreements, and MSAs with clause libraries and risk flags."
+        : "Compose a reproducible synthetic document run, then inspect every validation signal.";
   const activeResult = job?.results[0];
 
   return (
@@ -173,8 +190,9 @@ export function StudioClient({ initialDomain = "invoices" }: { initialDomain?: D
             <button type="button" className={config.domain === "invoices" ? "segment-active" : ""} aria-pressed={config.domain === "invoices"} onClick={() => switchDomain("invoices")}>Invoices</button>
             <button type="button" className={isHealthcare ? "segment-active" : ""} aria-pressed={isHealthcare} onClick={() => switchDomain("healthcare")}>Healthcare</button>
             <button type="button" className={isSupport ? "segment-active" : ""} aria-pressed={isSupport} onClick={() => switchDomain("support")}>Support</button>
+            <button type="button" className={isLegal ? "segment-active" : ""} aria-pressed={isLegal} onClick={() => switchDomain("legal")}>Legal</button>
           </div>
-          <div className="studio-header-meta"><Badge tone="accent"><ShieldCheck aria-hidden="true" /> SCHEMA LOCKED</Badge><span>{isHealthcare ? "clinical.soap.v1" : isSupport ? "support.conversation.v1" : "invoice.india.v4"}</span></div>
+          <div className="studio-header-meta"><Badge tone="accent"><ShieldCheck aria-hidden="true" /> SCHEMA LOCKED</Badge><span>{isHealthcare ? "clinical.soap.v1" : isSupport ? "support.conversation.v1" : isLegal ? "legal.contract.v1" : "invoice.india.v4"}</span></div>
         </div>
       </section>
 
@@ -202,7 +220,7 @@ export function StudioClient({ initialDomain = "invoices" }: { initialDomain?: D
             <fieldset className="field-block"><legend>Document language</legend><div className="segment-control">{(Object.keys(labels) as Language[]).map((language) => <button type="button" key={language} className={config.language === language ? "segment-active" : ""} onClick={() => setConfig({ ...config, language })} aria-pressed={config.language === language}><strong>{labels[language]}</strong><span>{language}</span></button>)}</div></fieldset>
             <fieldset className="field-block"><legend>Generation provider</legend><div className="provider-grid">
               <button type="button" className={cn("provider-card", config.provider === "offline" && "provider-active")} onClick={() => setConfig({ ...config, provider: "offline" as Provider })} aria-pressed={config.provider === "offline"}><Cpu aria-hidden="true" /><div><strong>Offline forge</strong><span>Fast, private, deterministic</span></div><i>{config.provider === "offline" ? <Check /> : null}</i></button>
-              <button type="button" disabled={isStructured} className={cn("provider-card", config.provider === "nemo" && "provider-active", isStructured && "control-disabled")} onClick={() => !isStructured && setConfig({ ...config, provider: "nemo" as Provider })} aria-pressed={config.provider === "nemo"}><CloudCog aria-hidden="true" /><div><strong>NVIDIA NeMo</strong><span>{isHealthcare ? "Clinical adapter calibration pending" : isSupport ? "Conversation adapter calibration pending" : "Higher variation, API-backed"}</span></div><i>{config.provider === "nemo" ? <Check /> : null}</i></button>
+              <button type="button" disabled={isStructured} className={cn("provider-card", config.provider === "nemo" && "provider-active", isStructured && "control-disabled")} onClick={() => !isStructured && setConfig({ ...config, provider: "nemo" as Provider })} aria-pressed={config.provider === "nemo"}><CloudCog aria-hidden="true" /><div><strong>NVIDIA NeMo</strong><span>{isHealthcare ? "Clinical adapter calibration pending" : isSupport ? "Conversation adapter calibration pending" : isLegal ? "Contract adapter calibration pending" : "Higher variation, API-backed"}</span></div><i>{config.provider === "nemo" ? <Check /> : null}</i></button>
             </div></fieldset>
           </Card>
 
@@ -241,6 +259,22 @@ export function StudioClient({ initialDomain = "invoices" }: { initialDomain?: D
               </div>
               <div className="clinical-policy"><ShieldCheck aria-hidden="true" /><div><strong>Conversation policy enforced</strong><span>Pseudonymous customer IDs, alternating roles, coherent resolution state, and sentiment progression are validated on every record.</span></div></div>
             </Card>
+          ) : isLegal ? (
+            <Card className="config-card">
+              <ConfigHeader number="03" icon={<ShieldCheck />} title="Contract controls" description="Document family and clause budget" />
+              <div className="field-block">
+                <label htmlFor="legal-document-type">Document type</label>
+                <select id="legal-document-type" className="studio-select" value={config.legal.document_type} onChange={(event) => setConfig({ ...config, legal: { ...config.legal, document_type: event.target.value as LegalDocumentType } })}>
+                  <option value="mixed">Mixed contracts</option><option value="nda">NDA</option><option value="service-agreement">Service agreement</option><option value="msa">Master services agreement</option>
+                </select>
+              </div>
+              <div className="field-block">
+                <div className="field-label"><label htmlFor="max-clauses">Maximum clauses</label><output htmlFor="max-clauses">{config.legal.max_clauses}</output></div>
+                <input id="max-clauses" type="range" min="3" max="8" step="1" value={config.legal.max_clauses} onChange={(event) => setConfig({ ...config, legal: { ...config.legal, max_clauses: Number(event.target.value) } })} style={{ "--range-progress": `${((config.legal.max_clauses - 3) / 5) * 100}%` } as React.CSSProperties} />
+                <div className="range-marks"><span>3</span><span>5</span><span>6</span><span>8</span></div>
+              </div>
+              <div className="clinical-policy"><ShieldCheck aria-hidden="true" /><div><strong>Contract policy enforced</strong><span>Synthetic labeling, pseudonymous parties, sequential clauses, confidentiality coverage, and disclaimer presence are validated on every record.</span></div></div>
+            </Card>
           ) : (
             <Card className="config-card">
               <ConfigHeader number="03" icon={<WandSparkles />} title="Render & degradation" description="Control document realism" />
@@ -263,7 +297,7 @@ export function StudioClient({ initialDomain = "invoices" }: { initialDomain?: D
           <Card className="run-card">
             <div className="run-card-head"><div><p className="eyebrow">RUN MANIFEST</p><h2>Ready to forge</h2></div><span className="status-lamp" /></div>
             <dl className="run-manifest">
-              <div><dt>Domain</dt><dd>{isHealthcare ? "Healthcare" : isSupport ? "Support" : "Invoices"}</dd></div><div><dt>Records</dt><dd>{config.count}</dd></div><div><dt>Language</dt><dd>{config.language}</dd></div><div><dt>Provider</dt><dd>{config.provider === "nemo" ? "NVIDIA NeMo" : "Offline forge"}</dd></div><div><dt>Seed</dt><dd>{config.seed}</dd></div><div><dt>Outputs</dt><dd>{isStructured ? "JSON · JSONL" : config.render ? "JSON · PDF · PNG" : "JSON"}</dd></div>
+              <div><dt>Domain</dt><dd>{isHealthcare ? "Healthcare" : isSupport ? "Support" : isLegal ? "Legal" : "Invoices"}</dd></div><div><dt>Records</dt><dd>{config.count}</dd></div><div><dt>Language</dt><dd>{config.language}</dd></div><div><dt>Provider</dt><dd>{config.provider === "nemo" ? "NVIDIA NeMo" : "Offline forge"}</dd></div><div><dt>Seed</dt><dd>{config.seed}</dd></div><div><dt>Outputs</dt><dd>{isStructured ? "JSON · JSONL" : config.render ? "JSON · PDF · PNG" : "JSON"}</dd></div>
             </dl>
             <div className="estimated-row"><span>Estimated runtime</span><strong>~{Math.max(3, Math.ceil(config.count * (config.provider === "nemo" ? 0.42 : 0.18)))}s</strong></div>
             <Button className="button-primary button-generate" loading={submitting} onClick={generate}><Sparkles aria-hidden="true" /> {submitting ? "Starting job" : "Generate dataset"}</Button>
@@ -275,7 +309,7 @@ export function StudioClient({ initialDomain = "invoices" }: { initialDomain?: D
 
       {job ? <section className="job-section" aria-live="polite">
         <Card className="job-progress-card">
-          <div className="job-progress-head"><div><span className={cn("job-state-icon", job.status === "completed" && "job-complete")}>{job.status === "completed" ? <Check /> : <LoaderCircle className={job.status !== "failed" ? "animate-spin" : ""} />}</span><div><p className="eyebrow">JOB {job.id}</p><h2>{job.status === "completed" ? "Dataset forged successfully" : job.status === "failed" ? "Generation failed" : "Generation in progress"}</h2><span>{job.message ?? (job.status === "completed" ? `${job.results.length} ${config.domain === "support" ? "conversations" : config.domain === "healthcare" ? "clinical notes" : "invoices"} passed validation` : "Waiting for worker telemetry")}</span></div></div><strong>{job.progress}%</strong></div>
+          <div className="job-progress-head"><div><span className={cn("job-state-icon", job.status === "completed" && "job-complete")}>{job.status === "completed" ? <Check /> : <LoaderCircle className={job.status !== "failed" ? "animate-spin" : ""} />}</span><div><p className="eyebrow">JOB {job.id}</p><h2>{job.status === "completed" ? "Dataset forged successfully" : job.status === "failed" ? "Generation failed" : "Generation in progress"}</h2><span>{job.message ?? (job.status === "completed" ? `${job.results.length} ${config.domain === "support" ? "conversations" : config.domain === "healthcare" ? "clinical notes" : config.domain === "legal" ? "contracts" : "invoices"} passed validation` : "Waiting for worker telemetry")}</span></div></div><strong>{job.progress}%</strong></div>
           <div className="progress-track"><span style={{ width: `${job.progress}%` }} /></div>
         </Card>
         {activeResult ? <div className="result-grid"><Card className="result-preview-card"><div className="result-card-head"><div><p className="eyebrow">OUTPUT PREVIEW</p><h3>{activeResult.title}</h3></div><Badge tone="accent">VALIDATED</Badge></div><DocumentPreview document={activeResult} compact /></Card><Card className="result-validation-card"><div className="score-ring" style={{ "--score": `${activeResult.validationScore * 3.6}deg` } as React.CSSProperties}><div><strong>{activeResult.validationScore}</strong><span>/ 100</span></div></div><div><p className="eyebrow">QUALITY SCORE</p><h3>Validation checks</h3></div><ValidationRules document={activeResult} /><div className="result-actions"><Link href="/gallery" className="button"><Eye aria-hidden="true" /> Inspect results</Link><button className="button" onClick={() => downloadManifest(activeResult)}><Download aria-hidden="true" /> Manifest</button></div></Card></div> : null}

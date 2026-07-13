@@ -1,6 +1,6 @@
 # NV-SynthForge
 
-NV-SynthForge is a production-oriented MVP for creating reproducible, multi-domain synthetic datasets through a FastAPI backend and a Next.js interface. It currently generates **Indian GST invoices**, **privacy-safe clinical SOAP notes**, and **customer-support conversations**, with validation, artifacts, gallery review, and a cross-domain benchmark harness.
+NV-SynthForge is a production-oriented MVP for creating reproducible, multi-domain synthetic datasets through a FastAPI backend and a Next.js interface. It currently generates **Indian GST invoices**, **privacy-safe clinical SOAP notes**, **customer-support conversations**, and **legal contracts**, with validation, artifacts, gallery review, and a cross-domain benchmark harness.
 
 The project runs in a deterministic offline mode by default. NVIDIA NeMo Data Designer is an **optional integration** and requires both the compatible `data-designer` Python package and a valid `NVIDIA_API_KEY`. It is not required for the offline path.
 
@@ -11,16 +11,17 @@ The project runs in a deterministic offline mode by default. NVIDIA NeMo Data De
 | Capability | MVP status | Requirements / notes |
 | --- | --- | --- |
 | Invoice domain model, deterministic generator, and quality rules | Implemented | Covers Indian GST invoice records; the running OpenAPI schema is authoritative for request and response fields. |
-| Domain registry/catalog | Three working domains | Invoices, Healthcare, and Support are available; Legal, Finance, HR, and Retail remain roadmap cards. |
+| Domain registry/catalog | Four working domains | Invoices, Healthcare, Support, and Legal are available; Finance, HR, and Retail remain roadmap cards. |
 | Healthcare generation | Implemented as JSON/JSONL | Seeded privacy-safe SOAP notes with pseudonymous patients, plausible vitals, ICD-10 diagnoses, medication data, explicit synthetic disclaimers, and five quality rules. |
 | Customer-support conversations | Implemented as JSON/JSONL | Multi-turn chats with industry, sentiment-arc, resolution, sequential timestamps, multilingual labels (en/hi/gu), and five support quality rules. |
+| Legal contracts | Implemented as JSON/JSONL | NDAs, service agreements, and MSAs with synthetic parties, clause libraries, risk flags, confidentiality coverage, and five legal quality rules. |
 | Generation for other domains | Registry only / roadmap | Do not treat unavailable registry metadata as a working generator. |
 | Deterministic offline generation | Default path | No NVIDIA credential should be needed. Use an explicit seed when the API/UI exposes one. |
 | NVIDIA NeMo Data Designer generation | Optional adapter | Requires a compatible `data-designer` installation and `NVIDIA_API_KEY`; availability can vary by environment. |
 | API-to-artifact generation flow | Implemented and tested | Background jobs expose REST status plus a WebSocket snapshot; completed jobs persist metadata and artifact references in SQLite. |
 | Rendered invoice artifacts | Implemented | HTML, PDF, PNG, and deterministic degraded JPEG outputs are generated. ReportLab provides the portable PDF baseline; the `pdf` extra adds WeasyPrint on supported hosts. |
 | Export formats | Implemented with optional Parquet | JSON, JSONL, CSV, and a Hugging Face-compatible dataset card are always written. Parquet is added when the `parquet` extra is installed. |
-| Benchmark harness | Implemented deterministic baseline | Cross-domain quality, latency, and throughput for invoices, clinical notes, and support conversations. Not an OCR/VLM model benchmark. |
+| Benchmark harness | Implemented deterministic baseline | Cross-domain quality, latency, and throughput for invoices, clinical notes, support conversations, and legal contracts. Not an OCR/VLM model benchmark. |
 | Authentication, tenancy, billing, managed storage | Not implemented | Production hardening items, not MVP claims. |
 
 ## Repository layout
