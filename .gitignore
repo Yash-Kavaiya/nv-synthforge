@@ -38,6 +38,7 @@ artifacts/*
 !artifacts/.gitkeep
 backend/artifacts/
 .data/
+.demo-logs/
 backend/.data/
 
 # IDE / OS
