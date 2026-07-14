@@ -28,6 +28,36 @@ The OCR harness is not a random UI gimmick — it is the reason the synthetic do
 
 ## Demo script (5 minutes)
 
+### One-command launcher (recommended)
+
+**Git Bash / MSYS:**
+
+```bash
+cd C:/Users/yashk/nv-synthforge
+bash scripts/demo-track-c.sh
+```
+
+**PowerShell:**
+
+```powershell
+cd C:\Users\yashk\nv-synthforge
+powershell -ExecutionPolicy Bypass -File scripts\demo-track-c.ps1
+```
+
+The launcher picks the first free backend port among `8000/8001/8002`, starts the frontend on `3000` with rewrites pointed at that backend, and prints demo URLs.
+
+### Smoke the OCR harness
+
+With the backend running:
+
+```bash
+python scripts/ocr-demo-smoke.py
+# or pin a base:
+API_BASE=http://127.0.0.1:8001 python scripts/ocr-demo-smoke.py
+```
+
+### Manual walkthrough
+
 1. Open http://localhost:3000/studio?domain=invoices  
 2. Generate with **render + degrade** enabled (seed fixed for reproducibility).  
 3. Open Gallery → download JSON + PDF/degraded image.  

@@ -114,7 +114,12 @@ export function OCRBenchClient() {
           demo_noise: demoNoise,
         };
       } else {
-        const prediction = JSON.parse(predictionText) as Record<string, unknown>;
+        let prediction: Record<string, unknown>;
+        try {
+          prediction = JSON.parse(predictionText) as Record<string, unknown>;
+        } catch {
+          throw new Error("Prediction JSON is invalid — check for missing quotes, commas, or brackets.");
+        }
         payload = {
           job_id: activeSample?.jobId,
           document_index: activeSample?.documentIndex ?? 0,
@@ -155,7 +160,7 @@ export function OCRBenchClient() {
         </div>
       </header>
 
-      {error ? <div className="notice notice-error" role="alert"><strong>Evaluation error</strong><span>{error}</span></div> : null}
+      {error ? <div className="notice notice-error" role="alert"><strong>OCR harness error</strong><span>{error}</span></div> : null}
 
       <div className="ocr-grid">
         <Card className="config-card">
@@ -179,6 +184,18 @@ export function OCRBenchClient() {
               </select>
             </div>
           )}
+          {!loading && samples.length === 0 ? (
+            <div className="notice notice-demo" role="status">
+              <div>
+                <strong>No invoice samples yet</strong>
+                <span>Generate a synthetic invoice pack (JSON + PDF/image ground truth) to start scoring OCR output.</span>
+                <div className="ocr-actions">
+                  <Button onClick={() => void ensureInvoiceSample()} disabled={running}><Sparkles aria-hidden="true" /> Generate invoice pack</Button>
+                  <Button className="button-secondary" onClick={() => void loadSamples()} disabled={loading || running}><RefreshCw aria-hidden="true" /> Retry</Button>
+                </div>
+              </div>
+            </div>
+          ) : null}
           {activeSample ? (
             <div className="ocr-sample-meta">
               <div><small>JOB</small><strong>{activeSample.jobId}</strong></div>
