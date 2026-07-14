@@ -322,3 +322,55 @@ def test_validation_and_not_found_errors(tmp_path: Path) -> None:
         assert client.post("/api/v1/generate", json={"domain": "unknown", "count": 1}).status_code == 422
         assert client.post("/api/v1/generate", json={"domain": "invoices", "count": 0}).status_code == 422
         assert client.get("/api/v1/jobs/missing").status_code == 404
+
+
+def test_ocr_evaluate_scores_invoice_prediction_against_ground_truth(tmp_path: Path) -> None:
+    with TestClient(create_app(data_dir=tmp_path)) as client:
+        queued = client.post(
+            "/api/v1/generate",
+            json={
+                "domain": "invoices",
+                "count": 1,
+                "seed": 77,
+                "provider": "offline",
+                "render": False,
+                "degrade": False,
+            },
+        )
+        assert queued.status_code == 202
+        job = wait_for_completion(client, queued.json()["job_id"])
+        assert job["status"] == "completed"
+        invoice = job["results"][0]["invoice"]
+
+        perfect = client.post(
+            "/api/v1/ocr/evaluate",
+            json={
+                "job_id": job["id"],
+                "document_index": 0,
+                "model_name": "perfect-copy",
+                "prediction": invoice,
+            },
+        )
+        assert perfect.status_code == 200
+        perfect_body = perfect.json()
+        assert perfect_body["accuracy"] == 100.0
+        assert perfect_body["correct_fields"] == perfect_body["total_fields"]
+
+        demo = client.post(
+            "/api/v1/ocr/evaluate",
+            json={
+                "job_id": job["id"],
+                "document_index": 0,
+                "model_name": "noisy-demo",
+                "demo_noise": 0.35,
+            },
+        )
+        assert demo.status_code == 200
+        demo_body = demo.json()
+        assert demo_body["accuracy"] < 100.0
+        assert demo_body["incorrect_fields"]
+
+        samples = client.get("/api/v1/ocr/samples")
+        assert samples.status_code == 200
+        assert samples.json()["samples"]
+        assert samples.json()["samples"][0]["job_id"] == job["id"]

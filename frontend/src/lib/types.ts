@@ -220,3 +220,38 @@ export interface BenchmarkResult {
   throughput: number;
   createdAt: string;
 }
+
+export interface OCRSample {
+  jobId: string;
+  documentIndex: number;
+  documentId?: string;
+  title: string;
+  language?: Language;
+  validationScore?: number;
+  fileUrls: Record<string, string>;
+  invoiceNumber?: string;
+  grandTotal?: string;
+}
+
+export interface OCRFieldComparison {
+  field: string;
+  group: string;
+  expected?: string | null;
+  predicted?: string | null;
+  matched: boolean;
+}
+
+export interface OCREvalReport {
+  model: string;
+  metricScope: string;
+  totalFields: number;
+  correctFields: number;
+  accuracy: number;
+  groups: Record<string, { total: number; correct: number; accuracy: number }>;
+  comparisons: OCRFieldComparison[];
+  missingFields: string[];
+  incorrectFields: string[];
+  groundTruth?: Record<string, unknown>;
+  prediction?: Record<string, unknown>;
+  context?: Record<string, unknown> | null;
+}

@@ -14,6 +14,8 @@ import type {
   HRRecordData,
   LegalContractData,
   MedicalNoteData,
+  OCREvalReport,
+  OCRSample,
   RetailProductData,
   Provider,
   RuleCheck,
@@ -90,7 +92,7 @@ function bool(value: unknown, fallback = false): boolean {
 function arrayPayload(value: unknown): unknown[] {
   if (Array.isArray(value)) return value;
   const source = record(value);
-  for (const key of ["items", "results", "data", "domains", "documents", "gallery", "benchmarks"]) {
+  for (const key of ["items", "results", "data", "domains", "documents", "gallery", "benchmarks", "samples"]) {
     if (Array.isArray(source[key])) return source[key] as unknown[];
   }
   return [];
@@ -274,6 +276,64 @@ export function normalizeBenchmark(value: unknown, index = 0): BenchmarkResult {
   };
 }
 
+export function normalizeOCRSample(value: unknown): OCRSample {
+  const source = record(value);
+  const fileUrlsSource = record(source.file_urls ?? source.fileUrls);
+  const fileUrls: Record<string, string> = {};
+  for (const [key, item] of Object.entries(fileUrlsSource)) {
+    if (typeof item === "string" && item) fileUrls[key] = item;
+  }
+  return {
+    jobId: text(source.job_id ?? source.jobId),
+    documentIndex: Math.max(0, Math.round(numeric(source.document_index ?? source.documentIndex, 0))),
+    documentId: text(source.document_id ?? source.documentId) || undefined,
+    title: text(source.title, "Invoice sample"),
+    language: text(source.language) as Language | undefined,
+    validationScore: source.validation_score == null && source.validationScore == null ? undefined : percentScore(source.validation_score ?? source.validationScore, 0),
+    fileUrls,
+    invoiceNumber: text(source.invoice_number ?? source.invoiceNumber) || undefined,
+    grandTotal: text(source.grand_total ?? source.grandTotal) || undefined,
+  };
+}
+
+export function normalizeOCRReport(value: unknown): OCREvalReport {
+  const source = record(value);
+  const groupsSource = record(source.groups);
+  const groups: OCREvalReport["groups"] = {};
+  for (const [name, raw] of Object.entries(groupsSource)) {
+    const group = record(raw);
+    groups[name] = {
+      total: Math.round(numeric(group.total, 0)),
+      correct: Math.round(numeric(group.correct, 0)),
+      accuracy: percentScore(group.accuracy, 0),
+    };
+  }
+  const comparisons = arrayPayload(source.comparisons).map((item) => {
+    const row = record(item);
+    return {
+      field: text(row.field),
+      group: text(row.group, "identity"),
+      expected: row.expected == null ? null : text(row.expected),
+      predicted: row.predicted == null ? null : text(row.predicted),
+      matched: Boolean(row.matched),
+    };
+  });
+  return {
+    model: text(source.model, "user-ocr-model"),
+    metricScope: text(source.metric_scope ?? source.metricScope, "OCR structure accuracy"),
+    totalFields: Math.round(numeric(source.total_fields ?? source.totalFields, comparisons.length)),
+    correctFields: Math.round(numeric(source.correct_fields ?? source.correctFields, comparisons.filter((row) => row.matched).length)),
+    accuracy: percentScore(source.accuracy, 0),
+    groups,
+    comparisons,
+    missingFields: arrayPayload(source.missing_fields ?? source.missingFields).map((item) => text(item)).filter(Boolean),
+    incorrectFields: arrayPayload(source.incorrect_fields ?? source.incorrectFields).map((item) => text(item)).filter(Boolean),
+    groundTruth: record(source.ground_truth ?? source.groundTruth),
+    prediction: record(source.prediction),
+    context: source.context == null ? null : record(source.context),
+  };
+}
+
 export const api = {
   baseUrl: API_ORIGIN,
 
@@ -311,6 +371,16 @@ export const api = {
   async benchmark(payload: Record<string, unknown>): Promise<BenchmarkResult> {
     return normalizeBenchmark(
       await request("/api/v1/benchmarks", { method: "POST", body: JSON.stringify(payload) }),
+    );
+  },
+
+  async ocrSamples(): Promise<OCRSample[]> {
+    return arrayPayload(await request("/api/v1/ocr/samples")).map(normalizeOCRSample);
+  },
+
+  async ocrEvaluate(payload: Record<string, unknown>): Promise<OCREvalReport> {
+    return normalizeOCRReport(
+      await request("/api/v1/ocr/evaluate", { method: "POST", body: JSON.stringify(payload) }),
     );
   },
 

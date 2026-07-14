@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NV-SynthForge · Track C Architecture</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #020617;
+      color: #e2e8f0;
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      padding: 28px;
+    }
+    .wrap { max-width: 1180px; margin: 0 auto; }
+    header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+    .dot { width: 10px; height: 10px; border-radius: 999px; background: #76b900; box-shadow: 0 0 12px #76b900; animation: pulse 1.6s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.45} }
+    h1 { margin: 0; font-size: 18px; letter-spacing: .04em; }
+    p.sub { margin: 6px 0 0; color: #94a3b8; font-size: 12px; }
+    .card {
+      background: #0b1220;
+      border: 1px solid #1e293b;
+      border-radius: 16px;
+      padding: 18px;
+      overflow: auto;
+    }
+    .summary {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .summary .item {
+      background: #0b1220;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 14px;
+    }
+    .summary h3 { margin: 0 0 8px; font-size: 12px; color: #76b900; letter-spacing: .08em; text-transform: uppercase; }
+    .summary ul { margin: 0; padding-left: 16px; color: #cbd5e1; font-size: 11px; line-height: 1.55; }
+    footer { margin-top: 14px; color: #64748b; font-size: 10px; }
+    @media (max-width: 900px) { .summary { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="dot"></span>
+          <h1>NV-SYNTHFORGE · TRACK C SDG + OCR EVAL</h1>
+        </div>
+        <p class="sub">Inputs → NVIDIA / offline synthetic generation → JSON+PDF packs → OCR structure benchmark UI</p>
+      </div>
+    </header>
+
+    <div class="card">
+      <svg viewBox="0 0 1120 520" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/>
+          </pattern>
+          <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/>
+          </marker>
+        </defs>
+        <rect width="1120" height="520" fill="#020617"/>
+        <rect width="1120" height="520" fill="url(#grid)"/>
+
+        <!-- arrows -->
+        <path d="M190 150 H250" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+        <path d="M190 250 H250" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+        <path d="M560 160 H630" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+        <path d="M710 120 H820" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+        <path d="M710 250 H820" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+        <path d="M710 360 H820" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+        <!-- inputs -->
+        <rect x="40" y="110" width="150" height="70" rx="8" fill="#0f172a"/>
+        <rect x="40" y="110" width="150" height="70" rx="8" fill="rgba(30,41,59,0.5)" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="115" y="140" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="700">HF / sample / empty</text>
+        <text x="115" y="158" text-anchor="middle" fill="#94a3b8" font-size="9">dataset seed</text>
+
+        <rect x="40" y="220" width="150" height="60" rx="8" fill="#0f172a"/>
+        <rect x="40" y="220" width="150" height="60" rx="8" fill="rgba(30,41,59,0.5)" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="115" y="255" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="700">One prompt / seed</text>
+
+        <!-- nvidia box -->
+        <rect x="250" y="70" width="310" height="300" rx="14" fill="#0f172a"/>
+        <rect x="250" y="70" width="310" height="300" rx="14" fill="rgba(6,78,59,0.25)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="405" y="100" text-anchor="middle" fill="#34d399" font-size="11" font-weight="700">NVIDIA SYNTHETIC GENERATION</text>
+        <text x="405" y="118" text-anchor="middle" fill="#94a3b8" font-size="9">offline default · optional NeMo</text>
+
+        <rect x="285" y="140" width="240" height="44" rx="8" fill="#0f172a" stroke="#34d399"/>
+        <text x="405" y="167" text-anchor="middle" fill="#e2e8f0" font-size="12">NeMo Curator (optional)</text>
+        <rect x="285" y="200" width="240" height="44" rx="8" fill="#0f172a" stroke="#34d399"/>
+        <text x="405" y="227" text-anchor="middle" fill="#e2e8f0" font-size="12">NeMo Data Designer / offline gens</text>
+        <rect x="285" y="260" width="240" height="44" rx="8" fill="#0f172a" stroke="#34d399"/>
+        <text x="405" y="287" text-anchor="middle" fill="#e2e8f0" font-size="12">7 domains · quality rules</text>
+        <text x="405" y="345" text-anchor="middle" fill="#64748b" font-size="9">invoice · clinical · support · legal · finance · hr · retail</text>
+
+        <!-- middle outputs -->
+        <rect x="630" y="90" width="180" height="50" rx="8" fill="#0f172a"/>
+        <rect x="630" y="90" width="180" height="50" rx="8" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="720" y="120" text-anchor="middle" fill="#e2e8f0" font-size="12" font-weight="700">Create JSON data</text>
+
+        <rect x="630" y="170" width="180" height="70" rx="8" fill="#0f172a"/>
+        <rect x="630" y="170" width="180" height="70" rx="8" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="720" y="200" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="700">Agent / template path</text>
+        <text x="720" y="218" text-anchor="middle" fill="#94a3b8" font-size="9">.tex / render adapters</text>
+
+        <rect x="630" y="270" width="180" height="50" rx="8" fill="#0f172a"/>
+        <rect x="630" y="270" width="180" height="50" rx="8" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="720" y="300" text-anchor="middle" fill="#e2e8f0" font-size="12" font-weight="700">Create PDF / images</text>
+
+        <!-- ocr ui -->
+        <rect x="840" y="120" width="240" height="220" rx="14" fill="#0f172a"/>
+        <rect x="840" y="120" width="240" height="220" rx="14" fill="rgba(120,53,15,0.25)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="960" y="155" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="700">OCR EVAL WEBSITE</text>
+        <text x="960" y="185" text-anchor="middle" fill="#e2e8f0" font-size="11">User model JSON in</text>
+        <text x="960" y="210" text-anchor="middle" fill="#e2e8f0" font-size="11">Ground-truth JSON + PDF</text>
+        <text x="960" y="245" text-anchor="middle" fill="#94a3b8" font-size="10">field accuracy by group</text>
+        <text x="960" y="265" text-anchor="middle" fill="#94a3b8" font-size="10">identity · parties · amounts</text>
+        <text x="960" y="285" text-anchor="middle" fill="#94a3b8" font-size="10">line items</text>
+        <text x="960" y="315" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="700">/ocr · /api/v1/ocr/evaluate</text>
+
+        <text x="560" y="470" text-anchor="middle" fill="#64748b" font-size="10">OpenHackathons Track C · Synthetic Data Generation → high-quality packs + OCR structure benchmark</text>
+      </svg>
+    </div>
+
+    <div class="summary">
+      <div class="item">
+        <h3>Generate</h3>
+        <ul>
+          <li>7 offline domains</li>
+          <li>Optional NeMo Data Designer</li>
+          <li>Deterministic seeds + validators</li>
+        </ul>
+      </div>
+      <div class="item">
+        <h3>Package</h3>
+        <ul>
+          <li>JSON / JSONL / CSV exports</li>
+          <li>Invoice PDF + degraded scans</li>
+          <li>HF-style dataset cards</li>
+        </ul>
+      </div>
+      <div class="item">
+        <h3>Evaluate</h3>
+        <ul>
+          <li>Paste OCR model JSON</li>
+          <li>Score vs synthetic ground truth</li>
+          <li>Show field-level diffs</li>
+        </ul>
+      </div>
+    </div>
+    <footer>NV-SynthForge · docs/hackathon-track-c.md · github.com/Yash-Kavaiya/nv-synthforge</footer>
+  </div>
+</body>
+</html>

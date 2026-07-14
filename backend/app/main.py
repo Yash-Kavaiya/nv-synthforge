@@ -16,13 +16,12 @@ from app.domain.registry import list_domains
 from app.providers.nemo import NemoInvoiceProvider
 from app.services.artifacts import ArtifactExporter, DegradationConfig, InvoiceRenderer, StructuredArtifactExporter
 from app.services.benchmarking import benchmark_for
-from app.services.generation import OfflineInvoiceGenerator
 from app.services.finance_generation import OfflineFinanceGenerator
+from app.services.generation import OfflineInvoiceGenerator
 from app.services.healthcare_generation import OfflineHealthcareGenerator
 from app.services.hr_generation import OfflineHRGenerator
 from app.services.legal_generation import OfflineLegalGenerator
-from app.services.retail_generation import OfflineRetailGenerator
-from app.services.support_generation import OfflineSupportGenerator
+from app.services.ocr_eval import evaluate_ocr_prediction, make_noisy_prediction
 from app.services.persistence import SQLiteRepository
 from app.services.quality import (
     QualityReport,
@@ -34,6 +33,8 @@ from app.services.quality import (
     validate_retail_product,
     validate_support_conversation,
 )
+from app.services.retail_generation import OfflineRetailGenerator
+from app.services.support_generation import OfflineSupportGenerator
 
 
 class DegradationRequest(BaseModel):
@@ -119,8 +120,21 @@ class GenerateRequest(BaseModel):
 
 
 class BenchmarkRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     job_id: str | None = None
     name: str | None = None
+
+
+class OCREvalRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    job_id: str | None = None
+    document_index: int = Field(default=0, ge=0)
+    ground_truth: dict[str, Any] | None = None
+    prediction: dict[str, Any] | None = None
+    model_name: str = Field(default="user-ocr-model", min_length=1, max_length=128)
+    demo_noise: float | None = Field(default=None, ge=0.0, le=0.9)
 
 
 def _package_version(name: str) -> str | None:
@@ -890,6 +904,79 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
         if job is None or job.get("status") != "completed":
             raise HTTPException(status_code=404, detail="Completed generation job not found")
         return benchmark_for(job, request.name)
+
+    def _resolve_invoice_ground_truth(job_id: str | None, document_index: int, inline: dict[str, Any] | None) -> tuple[dict[str, Any], dict[str, Any] | None]:
+        if inline is not None:
+            return inline, None
+        if not job_id:
+            raise HTTPException(status_code=400, detail="Provide job_id or ground_truth invoice JSON")
+        job = repository.get_job(job_id)
+        if job is None or job.get("status") != "completed":
+            raise HTTPException(status_code=404, detail="Completed generation job not found")
+        domain = str(job.get("request", {}).get("domain", "invoices"))
+        if domain not in {"invoices", "invoice"}:
+            raise HTTPException(status_code=400, detail="OCR structure eval currently supports invoice jobs only")
+        results = job.get("results") or []
+        if document_index >= len(results):
+            raise HTTPException(status_code=404, detail="Document index out of range for job")
+        document = results[document_index]
+        invoice = document.get("invoice")
+        if not isinstance(invoice, dict):
+            raise HTTPException(status_code=400, detail="Job document does not contain invoice ground truth")
+        return invoice, {
+            "job_id": job["id"],
+            "document_id": document.get("id"),
+            "title": document.get("title"),
+            "file_urls": document.get("file_urls", {}),
+            "artifacts": job.get("artifacts", []),
+        }
+
+    @application.post("/api/v1/ocr/evaluate", tags=["ocr"])
+    def evaluate_ocr(request: OCREvalRequest) -> dict[str, Any]:
+        ground_truth, context = _resolve_invoice_ground_truth(request.job_id, request.document_index, request.ground_truth)
+        if request.demo_noise is not None:
+            prediction = make_noisy_prediction(ground_truth, noise_level=request.demo_noise)
+            model_name = request.model_name or "synthetic-ocr-demo"
+        elif request.prediction is not None:
+            prediction = request.prediction
+            model_name = request.model_name
+        else:
+            raise HTTPException(status_code=400, detail="Provide prediction JSON or demo_noise for synthetic OCR output")
+        report = evaluate_ocr_prediction(ground_truth=ground_truth, prediction=prediction, model_name=model_name)
+        return {
+            **report,
+            "ground_truth": ground_truth,
+            "prediction": prediction,
+            "context": context,
+        }
+
+    @application.get("/api/v1/ocr/samples", tags=["ocr"])
+    def ocr_samples(limit: Annotated[int, Query(ge=1, le=50)] = 12) -> dict[str, Any]:
+        samples: list[dict[str, Any]] = []
+        for job in repository.list_gallery(limit=100):
+            domain = str(job.get("request", {}).get("domain", "invoices"))
+            if domain not in {"invoices", "invoice"} or job.get("status") != "completed":
+                continue
+            for index, document in enumerate(job.get("results") or []):
+                invoice = document.get("invoice")
+                if not isinstance(invoice, dict):
+                    continue
+                samples.append(
+                    {
+                        "job_id": job["id"],
+                        "document_index": index,
+                        "document_id": document.get("id"),
+                        "title": document.get("title"),
+                        "language": document.get("language"),
+                        "validation_score": document.get("validation_score"),
+                        "file_urls": document.get("file_urls", {}),
+                        "invoice_number": invoice.get("invoice_number"),
+                        "grand_total": invoice.get("grand_total"),
+                    }
+                )
+                if len(samples) >= limit:
+                    return {"samples": samples}
+        return {"samples": samples}
 
     return application
 

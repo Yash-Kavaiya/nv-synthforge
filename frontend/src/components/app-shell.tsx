@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-import { Activity, Bell, Boxes, ChartNoAxesCombined, Command, FileStack, Gauge, Menu, PanelLeftClose, Search, Settings2, Sparkles, X } from "lucide-react";
+import { Activity, Bell, Boxes, ChartNoAxesCombined, Command, FileStack, Gauge, Menu, PanelLeftClose, ScanSearch, Search, Settings2, Sparkles, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { Badge, cn } from "./ui";
 
@@ -12,6 +12,7 @@ const navigation = [
   { href: "/studio", label: "Generation Studio", icon: Sparkles },
   { href: "/gallery", label: "Results Gallery", icon: FileStack },
   { href: "/benchmarks", label: "Benchmarks", icon: ChartNoAxesCombined },
+  { href: "/ocr", label: "OCR Eval", icon: ScanSearch },
 ];
 
 function SynthMark() {

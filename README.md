@@ -23,7 +23,8 @@ The project runs in a deterministic offline mode by default. NVIDIA NeMo Data De
 | API-to-artifact generation flow | Implemented and tested | Background jobs expose REST status plus a WebSocket snapshot; completed jobs persist metadata and artifact references in SQLite. |
 | Rendered invoice artifacts | Implemented | HTML, PDF, PNG, and deterministic degraded JPEG outputs are generated. ReportLab provides the portable PDF baseline; the `pdf` extra adds WeasyPrint on supported hosts. |
 | Export formats | Implemented with optional Parquet | JSON, JSONL, CSV, and a Hugging Face-compatible dataset card are always written. Parquet is added when the `parquet` extra is installed. |
-| Benchmark harness | Implemented deterministic baseline | Cross-domain quality, latency, and throughput for all seven domains. Not an OCR/VLM model benchmark. |
+| Benchmark harness | Implemented deterministic baseline | Cross-domain quality, latency, and throughput for all seven domains. Not an OCR/VLM model host. |
+| OCR structure evaluation website | Implemented for invoices | `/ocr` UI + `POST /api/v1/ocr/evaluate` scores user model JSON against synthetic ground truth (identity, parties, amounts, line items). |
 | Authentication, tenancy, billing, managed storage | Not implemented | Production hardening items, not MVP claims. |
 
 ## Repository layout
