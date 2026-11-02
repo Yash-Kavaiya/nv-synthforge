@@ -114,14 +114,16 @@ class SQLiteRepository:
                 "SELECT * FROM jobs WHERE status = 'completed' ORDER BY created_at DESC LIMIT ?",
                 (limit,),
             ).fetchall()
-            result = []
-            for row in rows:
-                artifacts = connection.execute(
-                    "SELECT kind,path,size,created_at FROM artifacts WHERE job_id = ? ORDER BY id",
-                    (row["id"],),
-                ).fetchall()
-                result.append(self._job_dict(row, artifacts))
-            return result
+            # One artifact query for the whole page instead of one per job.
+            by_job: dict[str, list[sqlite3.Row]] = {row["id"]: [] for row in rows}
+            if by_job:
+                placeholders = ",".join("?" * len(by_job))
+                for artifact in connection.execute(
+                    f"SELECT job_id,kind,path,size,created_at FROM artifacts WHERE job_id IN ({placeholders}) ORDER BY id",
+                    list(by_job),
+                ):
+                    by_job[artifact["job_id"]].append(artifact)
+        return [self._job_dict(row, by_job[row["id"]]) for row in rows]
 
     def fail_interrupted_jobs(self, reason: str = "Job was interrupted by a server restart") -> int:
         """Mark jobs left queued/running by a previous process as failed so clients stop waiting."""

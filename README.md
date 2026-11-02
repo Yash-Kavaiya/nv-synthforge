@@ -44,7 +44,7 @@ docker-compose.yml       Local two-service stack
 ### Prerequisites
 
 - Python 3.11+
-- Node.js 20+
+- Node.js 22+ (matches CI and the frontend Docker image)
 - pnpm (Corepack can provide it)
 - uv for Python dependency management
 - Optional: GNU Make (Git Bash, WSL, or a Windows package manager)

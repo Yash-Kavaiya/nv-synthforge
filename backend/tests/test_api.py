@@ -428,3 +428,17 @@ def test_invoice_rule_checks_report_seller_and_buyer_independently() -> None:
     checks = {check["id"]: check["passed"] for check in rule_checks(validate_invoice(invoice), "invoices")}
     assert checks["seller_gstin"] is False
     assert checks["buyer_gstin"] is True
+
+
+def test_gallery_keeps_each_jobs_artifacts_separate(tmp_path: Path) -> None:
+    with TestClient(create_app(data_dir=tmp_path)) as client:
+        ids = [
+            client.post("/api/v1/generate", json={"domain": domain, "count": 1, "seed": 3, "render": False}).json()["job_id"]
+            for domain in ("legal", "finance")
+        ]
+        for job_id in ids:
+            assert wait_for_completion(client, job_id)["status"] == "completed"
+    jobs = {job["id"]: job for job in client.app.state.repository.list_gallery(limit=10)}
+    for job_id in ids:
+        paths = [artifact["path"] for artifact in jobs[job_id]["artifacts"]]
+        assert paths and all(path.startswith(f"{job_id}/") for path in paths)
