@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import random
 from datetime import date, timedelta
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 
 from app.domain.finance import FinanceLineItem, FinanceStatement
 
@@ -65,7 +65,7 @@ class OfflineFinanceGenerator:
             kind = (
                 rng.choice(_TYPES)
                 if statement_type == "mixed"
-                else statement_type  # type: ignore[assignment]
+                else statement_type
             )
             if kind not in _TYPES:
                 kind = "income-statement"

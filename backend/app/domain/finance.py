@@ -37,7 +37,7 @@ class FinanceStatement(BaseModel):
     disclaimer: str = "Synthetic financial statement. Not an audited report and not for investment decisions."
 
     @model_validator(mode="after")
-    def validate_structure(self) -> "FinanceStatement":
+    def validate_structure(self) -> FinanceStatement:
         if self.period_end < self.period_start:
             raise ValueError("period_end must be on or after period_start")
         if [item.line_id for item in self.line_items] != list(range(1, len(self.line_items) + 1)):

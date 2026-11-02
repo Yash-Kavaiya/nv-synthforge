@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from itertools import pairwise
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -33,15 +34,15 @@ class SupportConversation(BaseModel):
     disclaimer: str = "Synthetic customer-support conversation. Not a real customer interaction."
 
     @model_validator(mode="after")
-    def validate_turn_order(self) -> "SupportConversation":
+    def validate_turn_order(self) -> SupportConversation:
         if self.turns[0].role != "customer":
             raise ValueError("conversation must start with a customer turn")
-        if any(left.role == right.role for left, right in zip(self.turns, self.turns[1:])):
+        if any(left.role == right.role for left, right in pairwise(self.turns)):
             raise ValueError("conversation roles must alternate")
         if [turn.turn_id for turn in self.turns] != list(range(1, len(self.turns) + 1)):
             raise ValueError("conversation turn IDs must be sequential")
         if any(turn.timestamp < self.started_at for turn in self.turns):
             raise ValueError("conversation turns cannot precede the conversation start")
-        if any(left.timestamp >= right.timestamp for left, right in zip(self.turns, self.turns[1:])):
+        if any(left.timestamp >= right.timestamp for left, right in pairwise(self.turns)):
             raise ValueError("conversation turn timestamps must increase")
         return self

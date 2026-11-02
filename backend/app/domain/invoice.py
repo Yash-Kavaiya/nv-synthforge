@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from datetime import date
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import random
 from datetime import date, timedelta
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 
 from app.domain.hr import HRRecord, HRSection
 
@@ -83,7 +83,7 @@ class OfflineHRGenerator:
                     employee_name=f"Employee-{(seed + index) % 9000 + 1000}",
                     department=department,
                     role_title=role,
-                    employment_type=rng.choice(("full-time", "contract", "intern")),  # type: ignore[arg-type]
+                    employment_type=rng.choice(("full-time", "contract", "intern")),
                     location=rng.choice(_LOCATIONS),
                     effective_date=date(2026, 1, 5) + timedelta(days=rng.randint(0, 180)),
                     annual_ctc_inr=_money(rng.uniform(450000, 3200000)),

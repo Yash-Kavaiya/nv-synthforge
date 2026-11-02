@@ -2,10 +2,25 @@ from __future__ import annotations
 
 import random
 from datetime import date, timedelta
+from typing import Literal, TypedDict, cast
 
 from app.domain.legal import ContractClause, LegalContract, LegalParty
 
-_TEMPLATES = {
+DocumentType = Literal["nda", "service-agreement", "msa"]
+Role = Literal["disclosing_party", "receiving_party", "service_provider", "customer"]
+RiskFlag = Literal["none", "medium", "high"]
+Language = Literal["en-IN", "hi-IN", "gu-IN"]
+
+
+class _Template(TypedDict):
+    title: str
+    roles: tuple[Role, Role]
+    clauses: list[tuple[str, str]]
+
+
+_RISK_CYCLE: tuple[RiskFlag, ...] = ("none", "none", "medium", "none", "high", "none", "medium", "none")
+
+_TEMPLATES: dict[DocumentType, _Template] = {
     "nda": {
         "title": "Mutual Non-Disclosure Agreement",
         "roles": ("disclosing_party", "receiving_party"),
@@ -92,7 +107,7 @@ class OfflineLegalGenerator:
             raise ValueError("max_clauses must be between 3 and 8")
 
         rng = random.Random(seed)
-        types = list(_TEMPLATES) if document_type == "mixed" else [document_type]
+        types: list[DocumentType] = list(_TEMPLATES) if document_type == "mixed" else [cast(DocumentType, document_type)]
         prefix = _LOCALIZED_PREFIX.get(language, "")
         results: list[LegalContract] = []
 
@@ -103,22 +118,21 @@ class OfflineLegalGenerator:
             name_a, name_b = rng.sample(_PARTY_NAMES, 2)
             clause_count = min(max_clauses, len(template["clauses"]))
             selected_clauses = template["clauses"][:clause_count]
-            risk_cycle = ("none", "none", "medium", "none", "high", "none", "medium", "none")
             clauses = [
                 ContractClause(
                     clause_id=clause_index,
                     title=title,
                     body=f"{prefix}{body}" if clause_index == 1 and prefix else body,
-                    risk_flag=risk_cycle[(clause_index - 1) % len(risk_cycle)],
+                    risk_flag=_RISK_CYCLE[(clause_index - 1) % len(_RISK_CYCLE)],
                 )
                 for clause_index, (title, body) in enumerate(selected_clauses, start=1)
             ]
             results.append(
                 LegalContract(
                     contract_id=f"LEG-{seed:06d}-{index:04d}",
-                    document_type=selected_type,  # type: ignore[arg-type]
+                    document_type=selected_type,
                     title=template["title"],
-                    language=language,  # type: ignore[arg-type]
+                    language=cast(Language, language),
                     effective_date=date(2026, 1, 1) + timedelta(days=rng.randrange(300)),
                     term_months=rng.choice([6, 12, 18, 24, 36]),
                     governing_law=rng.choice(_LAWS),
@@ -126,13 +140,13 @@ class OfflineLegalGenerator:
                         LegalParty(
                             party_id=f"SYN-PARTY-{(seed * 53 + index) % 900000 + 100000}",
                             name=name_a,
-                            role=role_a,  # type: ignore[arg-type]
+                            role=role_a,
                             jurisdiction="India",
                         ),
                         LegalParty(
                             party_id=f"SYN-PARTY-{(seed * 71 + index) % 900000 + 200000}",
                             name=name_b,
-                            role=role_b,  # type: ignore[arg-type]
+                            role=role_b,
                             jurisdiction="India",
                         ),
                     ],

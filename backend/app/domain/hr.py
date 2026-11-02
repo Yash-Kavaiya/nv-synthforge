@@ -35,7 +35,7 @@ class HRRecord(BaseModel):
     disclaimer: str = "Synthetic HR record. Not an employment contract and not for real personnel decisions."
 
     @model_validator(mode="after")
-    def validate_structure(self) -> "HRRecord":
+    def validate_structure(self) -> HRRecord:
         if [section.section_id for section in self.sections] != list(range(1, len(self.sections) + 1)):
             raise ValueError("section IDs must be sequential")
         if any(not section.body.strip() for section in self.sections):

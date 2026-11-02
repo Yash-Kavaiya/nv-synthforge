@@ -374,3 +374,51 @@ def test_ocr_evaluate_scores_invoice_prediction_against_ground_truth(tmp_path: P
         assert samples.status_code == 200
         assert samples.json()["samples"]
         assert samples.json()["samples"][0]["job_id"] == job["id"]
+
+
+def test_nemo_is_rejected_up_front_for_offline_only_domains(tmp_path: Path) -> None:
+    with TestClient(create_app(data_dir=tmp_path)) as client:
+        response = client.post("/api/v1/generate", json={"domain": "healthcare", "count": 1, "provider": "nemo"})
+    assert response.status_code == 422
+    assert "provider='offline'" in str(response.json()["detail"])
+
+
+def test_domains_report_live_generation_stats(tmp_path: Path) -> None:
+    with TestClient(create_app(data_dir=tmp_path)) as client:
+        before = {item["id"]: item for item in client.get("/api/v1/domains").json()["domains"]}
+        assert before["legal"]["generated"] == 0
+        assert before["legal"]["accuracy"] is None
+        assert before["invoices"]["providers"] == ["offline", "nemo"]
+        assert before["legal"]["providers"] == ["offline"]
+
+        queued = client.post("/api/v1/generate", json={"domain": "legal", "count": 3, "seed": 5})
+        assert wait_for_completion(client, queued.json()["job_id"])["status"] == "completed"
+
+        after = {item["id"]: item for item in client.get("/api/v1/domains").json()["domains"]}
+    assert after["legal"]["generated"] == 3
+    assert after["legal"]["accuracy"] == 100.0
+    assert after["invoices"]["generated"] == 0
+
+
+def test_jobs_interrupted_by_restart_are_marked_failed(tmp_path: Path) -> None:
+    from app.services.persistence import SQLiteRepository
+
+    repository = SQLiteRepository(tmp_path / "metadata.sqlite3")
+    repository.create_job("stuck", {"domain": "invoices"})
+    repository.update_job("stuck", status="running", progress=0.4)
+
+    with TestClient(create_app(data_dir=tmp_path)) as client:
+        job = client.get("/api/v1/jobs/stuck").json()
+    assert job["status"] == "failed"
+    assert "restart" in job["error"]
+
+
+def test_invoice_rule_checks_report_seller_and_buyer_independently() -> None:
+    from app.services.generation import OfflineInvoiceGenerator
+    from app.services.quality import rule_checks, validate_invoice
+
+    invoice = OfflineInvoiceGenerator().generate(count=1, seed=8)[0]
+    invoice.seller.address.state_code = "99"
+    checks = {check["id"]: check["passed"] for check in rule_checks(validate_invoice(invoice), "invoices")}
+    assert checks["seller_gstin"] is False
+    assert checks["buyer_gstin"] is True

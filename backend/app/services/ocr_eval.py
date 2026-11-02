@@ -3,7 +3,6 @@ from __future__ import annotations
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-
 # Fields used for OCR-style structure evaluation against synthetic invoice ground truth.
 _SCALAR_PATHS = (
     "invoice_number",

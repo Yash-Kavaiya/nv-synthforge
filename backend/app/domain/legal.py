@@ -41,7 +41,7 @@ class LegalContract(BaseModel):
     disclaimer: str = "Synthetic legal contract. Not legal advice and not an executed agreement."
 
     @model_validator(mode="after")
-    def validate_structure(self) -> "LegalContract":
+    def validate_structure(self) -> LegalContract:
         if self.parties[0].party_id == self.parties[1].party_id:
             raise ValueError("contract parties must be distinct")
         if [clause.clause_id for clause in self.clauses] != list(range(1, len(self.clauses) + 1)):

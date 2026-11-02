@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from itertools import pairwise
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -31,7 +33,7 @@ def validate_invoice(invoice: Invoice) -> QualityReport:
     checks = 5
     for role, party in (("seller", invoice.seller), ("buyer", invoice.buyer)):
         if party.gstin[:2] != party.address.state_code:
-            violations.append(Violation(rule="gstin_state_code", message=f"{role} GSTIN prefix must match address state code"))
+            violations.append(Violation(rule=f"{role}_gstin", message=f"{role} GSTIN prefix must match address state code"))
     subtotal = money(sum((item.line_subtotal for item in invoice.items), Decimal("0")))
     tax = money(sum((item.tax_amount for item in invoice.items), Decimal("0")))
     if invoice.subtotal != subtotal:
@@ -69,7 +71,7 @@ def validate_support_conversation(conversation: SupportConversation) -> QualityR
     if not conversation.customer_id.startswith("SYN-CUST-"):
         violations.append(Violation(rule="pseudonymous_identity", message="customer must use a synthetic identifier"))
     if conversation.turns[0].role != "customer" or any(
-        left.role == right.role for left, right in zip(conversation.turns, conversation.turns[1:])
+        left.role == right.role for left, right in pairwise(conversation.turns)
     ):
         violations.append(Violation(rule="turn_structure", message="turns must start with a customer and alternate roles"))
     closing_turn = conversation.turns[-1]
@@ -163,3 +165,74 @@ def validate_retail_product(product: RetailProduct) -> QualityReport:
         violations.append(Violation(rule="rating_average", message="rating average must match review ratings"))
     score = max(0.0, round(1.0 - len(violations) / checks, 4))
     return QualityReport(valid=not violations, score=score, violations=violations, rules_checked=checks)
+
+
+# Human-readable labels for every rule a validator can emit, keyed by canonical domain id.
+# Violation.rule values above must match these rule ids so the API can report pass/fail per rule.
+RULE_LABELS: dict[str, tuple[tuple[str, str], ...]] = {
+    "invoices": (
+        ("seller_gstin", "Seller GSTIN matches its state"),
+        ("buyer_gstin", "Buyer GSTIN matches its state"),
+        ("subtotal", "Line-item subtotals reconcile"),
+        ("tax_total", "GST components reconcile"),
+        ("grand_total", "Grand total reconciles"),
+    ),
+    "healthcare": (
+        ("synthetic_disclaimer", "Explicitly marked as synthetic"),
+        ("pseudonymous_identity", "Patient identity is pseudonymous"),
+        ("soap_completeness", "All SOAP sections are complete"),
+        ("diagnosis", "ICD-10 diagnosis is present"),
+        ("vitals", "Vital signs are internally consistent"),
+    ),
+    "support": (
+        ("synthetic_disclaimer", "Explicitly marked as synthetic"),
+        ("pseudonymous_identity", "Customer identity is pseudonymous"),
+        ("turn_structure", "Customer and agent turns alternate"),
+        ("resolution", "Resolution state matches the closing turn"),
+        ("sentiment_arc", "Sentiment follows the configured arc"),
+    ),
+    "legal": (
+        ("synthetic_disclaimer", "Explicitly marked as synthetic"),
+        ("pseudonymous_identity", "Parties use synthetic identifiers"),
+        ("party_distinctness", "Contract parties are distinct"),
+        ("clause_structure", "Clauses are sequential and complete"),
+        ("confidentiality", "Confidentiality coverage is present"),
+    ),
+    "finance": (
+        ("synthetic_disclaimer", "Explicitly marked as synthetic"),
+        ("pseudonymous_identity", "Entity identity is synthetic"),
+        ("period_window", "Reporting period is valid"),
+        ("totals", "Debits and credits reconcile"),
+        ("net_position", "Net position matches totals"),
+    ),
+    "hr": (
+        ("synthetic_disclaimer", "Explicitly marked as synthetic"),
+        ("pseudonymous_identity", "Employee identity is synthetic"),
+        ("compensation", "Compensation is positive"),
+        ("section_structure", "Sections are sequential and complete"),
+        ("section_content", "Section bodies are present"),
+    ),
+    "retail": (
+        ("synthetic_disclaimer", "Explicitly marked as synthetic"),
+        ("sku_pattern", "SKU uses synthetic pattern"),
+        ("pricing", "Pricing is internally consistent"),
+        ("review_structure", "Reviews are sequential"),
+        ("rating_average", "Average rating matches reviews"),
+    ),
+}
+
+
+def rule_checks(report: QualityReport, domain: str) -> list[dict[str, Any]]:
+    """Expand a report into one pass/fail entry per known rule for the domain."""
+    messages: dict[str, str] = {}
+    for violation in report.violations:
+        messages.setdefault(violation.rule, violation.message)
+    return [
+        {
+            "id": rule_id,
+            "label": label,
+            "passed": rule_id not in messages,
+            "detail": messages.get(rule_id, "Passed deterministic validation"),
+        }
+        for rule_id, label in RULE_LABELS[domain]
+    ]

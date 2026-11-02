@@ -25,4 +25,7 @@ def test_quality_reports_gstin_state_mismatch() -> None:
     report = validate_invoice(invoice)
     assert report.valid is False
     assert report.score < 1.0
-    assert any(item.rule == "gstin_state_code" for item in report.violations)
+    rules = {item.rule for item in report.violations}
+    assert "seller_gstin" in rules
+    # A seller mismatch must not be reported against the buyer.
+    assert "buyer_gstin" not in rules

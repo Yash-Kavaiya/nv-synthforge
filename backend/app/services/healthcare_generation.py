@@ -2,10 +2,27 @@ from __future__ import annotations
 
 import random
 from datetime import date, timedelta
+from typing import Literal, TypedDict, cast
 
 from app.domain.healthcare import Diagnosis, MedicalNote, Medication, SOAPNote, SyntheticPatient, VitalSigns
 
-_SCENARIOS = [
+Route = Literal["oral", "topical", "inhaled", "intravenous", "subcutaneous"]
+Gender = Literal["female", "male", "non-binary", "not-disclosed"]
+Language = Literal["en-IN", "hi-IN", "gu-IN"]
+
+
+class _Scenario(TypedDict):
+    profile: str
+    chief: str
+    subjective: str
+    objective: str
+    assessment: str
+    plan: str
+    diagnosis: tuple[str, str]
+    medication: tuple[str, str, Route, str, int]
+
+
+_SCENARIOS: list[_Scenario] = [
     {
         "profile": "respiratory",
         "chief": "Fever and dry cough for three days",
@@ -47,7 +64,7 @@ _SCENARIOS = [
         "medication": ("Hydrocortisone", "1% thin layer", "topical", "twice daily", 7),
     },
 ]
-_GENDERS = ["female", "male", "non-binary", "not-disclosed"]
+_GENDERS: list[Gender] = ["female", "male", "non-binary", "not-disclosed"]
 
 
 class OfflineHealthcareGenerator:
@@ -78,7 +95,7 @@ class OfflineHealthcareGenerator:
                 MedicalNote(
                     note_id=f"MED-{seed:06d}-{index + 1:04d}",
                     encounter_date=date(2026, 1, 1) + timedelta(days=rng.randint(0, 364)),
-                    language=language,
+                    language=cast(Language, language),  # validated by the MedicalNote model
                     patient=SyntheticPatient(
                         patient_id=f"SYN-PAT-{(seed * 997 + index) % 1_000_000:06d}",
                         name=f"Patient-{(seed * 37 + index) % 10_000:04d}",

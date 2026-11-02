@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import csv
-import io
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -149,7 +148,7 @@ class InvoiceRenderer:
         y += 48
         for item in invoice.items:
             draw.rectangle((70, y, 1170, y + 58), outline="#ccd2dc", width=1)
-            values = [
+            values: list[tuple[int, str]] = [
                 (80, item.description[:38]),
                 (610, item.hsn_sac),
                 (780, str(item.quantity)),
@@ -167,9 +166,9 @@ class InvoiceRenderer:
             ("IGST", invoice.igst),
             ("Grand total", invoice.grand_total),
         ]
-        for label, value in totals:
+        for label, amount in totals:
             draw.text((770, y), label, fill=navy, font=regular)
-            draw.text((1010, y), f"Rs {value}", fill=navy, font=regular)
+            draw.text((1010, y), f"Rs {amount}", fill=navy, font=regular)
             y += 44
         draw.text((70, 1615), "Synthetic document · NV-SynthForge", fill="#687385", font=small)
         image.save(destination, format="PNG", optimize=False)

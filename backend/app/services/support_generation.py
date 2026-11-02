@@ -1,12 +1,26 @@
 from __future__ import annotations
 
 import random
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+from typing import Literal, TypedDict, cast
 
 from app.domain.support import ConversationTurn, SupportConversation
 
+Industry = Literal["telecom", "ecommerce", "banking", "saas"]
+Channel = Literal["chat", "email", "voice-transcript"]
+SentimentArc = Literal["recovery", "steady-positive", "escalation"]
+Language = Literal["en-IN", "hi-IN", "gu-IN"]
 
-_SCENARIOS = {
+
+class _Scenario(TypedDict):
+    issue: str
+    channel: Channel
+    turns: list[str]
+    resolution: str
+    escalation: str
+
+
+_SCENARIOS: dict[Industry, _Scenario] = {
     "telecom": {
         "issue": "unexpected mobile-data charge",
         "channel": "chat",
@@ -114,7 +128,7 @@ class OfflineSupportGenerator:
             raise ValueError("max_turns must be between 4 and 10")
 
         rng = random.Random(seed)
-        industries = list(_SCENARIOS) if industry == "mixed" else [industry]
+        industries: list[Industry] = list(_SCENARIOS) if industry == "mixed" else [cast(Industry, industry)]
         turn_count = max_turns if max_turns % 2 == 0 else max_turns - 1
         prefix = _LOCALIZED_PREFIX.get(language, "")
         results: list[SupportConversation] = []
@@ -122,7 +136,7 @@ class OfflineSupportGenerator:
         for index in range(1, count + 1):
             selected_industry = rng.choice(industries)
             scenario = _SCENARIOS[selected_industry]
-            started_at = datetime(2026, 1, 1, tzinfo=timezone.utc) + timedelta(
+            started_at = datetime(2026, 1, 1, tzinfo=UTC) + timedelta(
                 days=rng.randrange(365), minutes=rng.randrange(1440)
             )
             texts = list(scenario["turns"][:turn_count])
@@ -143,11 +157,11 @@ class OfflineSupportGenerator:
                     conversation_id=f"SUP-{seed:06d}-{index:04d}",
                     customer_id=f"SYN-CUST-{(seed * 97 + index) % 900000 + 100000}",
                     started_at=started_at,
-                    language=language,
+                    language=cast(Language, language),
                     industry=selected_industry,
                     channel=scenario["channel"],
                     issue_type=scenario["issue"],
-                    sentiment_arc=sentiment_arc,
+                    sentiment_arc=cast(SentimentArc, sentiment_arc),
                     resolution_status="escalated" if sentiment_arc == "escalation" else "resolved",
                     turns=turns,
                 )

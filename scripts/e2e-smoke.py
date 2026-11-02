@@ -77,7 +77,7 @@ def main() -> int:
     gallery = request("GET", "/gallery")["items"]
     assert len([item for item in gallery if item.get("job_id") == job_id]) == 2, gallery
 
-    benchmark = request("POST", "/benchmarks", {"job_id": job_id, "model": "ground-truth-self-check"})
+    benchmark = request("POST", "/benchmarks", {"job_id": job_id, "name": "ground-truth-self-check"})
     assert benchmark["accuracy"] == 1.0 and benchmark["documents"] == 2, benchmark
 
     healthcare_created = request("POST", "/generate", {

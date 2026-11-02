@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -123,6 +123,42 @@ class SQLiteRepository:
                 result.append(self._job_dict(row, artifacts))
             return result
 
+    def fail_interrupted_jobs(self, reason: str = "Job was interrupted by a server restart") -> int:
+        """Mark jobs left queued/running by a previous process as failed so clients stop waiting."""
+        with self._lock, self._connect() as connection:
+            cursor = connection.execute(
+                "UPDATE jobs SET status = 'failed', progress = 1.0, error = ?, updated_at = ? "
+                "WHERE status IN ('queued', 'running')",
+                (reason, self._now()),
+            )
+            return cursor.rowcount
+
+    def domain_stats(self) -> dict[str, dict[str, float]]:
+        """Documents generated and document-weighted mean quality score per domain (completed jobs only)."""
+        with self._lock, self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT
+                    CASE json_extract(request_json, '$.domain') WHEN 'invoice' THEN 'invoices'
+                         ELSE json_extract(request_json, '$.domain') END AS domain,
+                    SUM(json_extract(result_json, '$.document_count')) AS documents,
+                    SUM(json_extract(result_json, '$.document_count') * json_extract(result_json, '$.quality_score'))
+                        AS weighted_score
+                FROM jobs
+                WHERE status = 'completed' AND result_json IS NOT NULL
+                GROUP BY 1
+                """
+            ).fetchall()
+        stats: dict[str, dict[str, float]] = {}
+        for row in rows:
+            documents = int(row["documents"] or 0)
+            if documents:
+                stats[row["domain"]] = {
+                    "generated": documents,
+                    "accuracy": round(float(row["weighted_score"] or 0) / documents, 1),
+                }
+        return stats
+
     @staticmethod
     def _job_dict(row: sqlite3.Row, artifacts: list[sqlite3.Row]) -> dict[str, Any]:
         request = json.loads(row["request_json"])
@@ -152,4 +188,4 @@ class SQLiteRepository:
 
     @staticmethod
     def _now() -> str:
-        return datetime.now(timezone.utc).isoformat()
+        return datetime.now(UTC).isoformat()

@@ -37,7 +37,7 @@ class RetailProduct(BaseModel):
     disclaimer: str = "Synthetic retail product record. Not a real catalog listing or customer review."
 
     @model_validator(mode="after")
-    def validate_structure(self) -> "RetailProduct":
+    def validate_structure(self) -> RetailProduct:
         if self.sale_price_inr > self.list_price_inr:
             raise ValueError("sale price cannot exceed list price")
         if [review.review_id for review in self.reviews] != list(range(1, len(self.reviews) + 1)):
