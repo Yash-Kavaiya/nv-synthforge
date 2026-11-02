@@ -33,7 +33,7 @@ The project runs in a deterministic offline mode by default. NVIDIA NeMo Data De
 backend/                 FastAPI service, generators, and tests
 frontend/                Next.js/TypeScript application
 docs/                    Architecture, deployment, and demo documentation
-.github/_workflows_pending/  CI workflow staged until workflow-scope push is enabled
+.github/workflows/       GitHub Actions CI (lint, type-check, tests, build)
 scripts/                 Infrastructure validation and service smoke tests
 artifacts/               Local generated output (ignored by Git)
 docker-compose.yml       Local two-service stack
