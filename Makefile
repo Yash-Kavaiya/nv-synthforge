@@ -9,7 +9,7 @@ FRONTEND_DIR ?= frontend
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install install-backend install-frontend backend-dev frontend-dev test test-backend test-frontend lint lint-frontend build build-frontend validate-infra smoke e2e-smoke compose-config compose-up compose-down clean
+.PHONY: help install install-backend install-frontend backend-dev frontend-dev test test-backend test-frontend lint lint-backend lint-frontend test-e2e build build-frontend validate-infra smoke e2e-smoke compose-config compose-up compose-down clean
 
 help: ## Show available commands
 	@printf '%s\n' \
@@ -18,7 +18,7 @@ help: ## Show available commands
 	  '  make backend-dev      Start FastAPI on port 8000' \
 	  '  make frontend-dev     Start Next.js on port 3000' \
 	  '  make test             Run backend tests' \
-	  '  make lint             Run frontend lint' \
+	  '  make lint             Run backend ruff/mypy and frontend eslint/tsc' \n	  '  make test-e2e         Run Playwright browser tests against a running API' \
 	  '  make build            Build the frontend production bundle' \
 	  '  make validate-infra   Validate YAML and infrastructure contracts' \
 	  '  make smoke            Probe running API and frontend services' \
@@ -51,10 +51,16 @@ test-backend: ## Run backend tests
 test-frontend: ## Run frontend tests
 	cd $(FRONTEND_DIR) && $(PNPM) run test
 
-lint: lint-frontend ## Run all configured linters
+lint: lint-backend lint-frontend ## Run all configured linters and type checkers
 
-lint-frontend: ## Run frontend ESLint
-	cd $(FRONTEND_DIR) && $(PNPM) run lint
+lint-backend: ## Run ruff and mypy on the backend
+	cd $(BACKEND_DIR) && $(UV) run ruff check . && $(UV) run mypy
+
+lint-frontend: ## Run frontend ESLint and TypeScript
+	cd $(FRONTEND_DIR) && $(PNPM) run lint && $(PNPM) run typecheck
+
+test-e2e: ## Run Playwright browser tests (backend must be running on :8000)
+	cd $(FRONTEND_DIR) && $(PNPM) run test:e2e
 
 build: build-frontend ## Build production assets
 
