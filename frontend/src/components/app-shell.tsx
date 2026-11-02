@@ -72,9 +72,6 @@ export function AppShell({ children }: { children: ReactNode }) {
           <button className="nav-item" type="button"><Settings2 aria-hidden="true" /><span>Settings</span></button>
         </nav>
         <div className="sidebar-footer">
-          <div className="capacity-row"><span>Monthly capacity</span><strong>68%</strong></div>
-          <div className="capacity-track"><span /></div>
-          <p>68.4K / 100K documents</p>
           <div className="environment-row">
             <span className={cn("status-dot", backendOnline === true && "status-live", backendOnline === false && "status-demo")} />
             <div><strong>{backendOnline === true ? "API connected" : backendOnline === false ? "Demo mode" : "Connecting"}</strong><span>{api.baseUrl}</span></div>

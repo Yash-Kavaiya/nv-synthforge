@@ -1,4 +1,3 @@
-import { fallbackGallery } from "./mock-data";
 import type {
   BenchmarkResult,
   Domain,
@@ -164,9 +163,10 @@ export function normalizeDocument(value: unknown, index = 0): GalleryDocument {
     : Array.isArray(source.rule_checks)
       ? source.rule_checks
       : [];
-  const fallback = fallbackGallery[index % fallbackGallery.length];
+  // Live documents must never borrow values from the demo dataset: missing fields stay undefined.
+  const invoiceSeller = record(invoice.seller);
   const vendor = isInvoice
-    ? text(source.vendor ?? source.supplier ?? seller.name, fallback.vendor)
+    ? text(source.vendor ?? source.supplier ?? seller.name ?? invoiceSeller.name) || undefined
     : undefined;
   const fallbackTitle = isHealthcare
     ? "Synthetic clinical note"
@@ -191,17 +191,17 @@ export function normalizeDocument(value: unknown, index = 0): GalleryDocument {
     createdAt: text(source.created_at ?? source.createdAt, new Date().toISOString()),
     validationScore: score,
     status: source.status === "review" || score < 95 ? "review" : "validated",
-    amount: isInvoice ? text(source.amount ?? source.total ?? source.total_amount, fallback.amount) : undefined,
+    amount: isInvoice ? text(source.amount ?? source.total ?? source.total_amount) || undefined : undefined,
     vendor,
-    invoiceNumber: isInvoice ? text(source.invoice_number ?? source.invoiceNumber, fallback.invoiceNumber) : undefined,
-    dueDate: isInvoice ? text(source.due_date ?? source.dueDate, fallback.dueDate) : undefined,
+    invoiceNumber: isInvoice ? text(source.invoice_number ?? source.invoiceNumber ?? invoice.invoice_number) || undefined : undefined,
+    dueDate: isInvoice ? text(source.due_date ?? source.dueDate) || undefined : undefined,
     fileUrls: {
       pdf: resolveApiAssetUrl(urls.pdf ?? source.pdf_url),
       image: resolveApiAssetUrl(urls.image ?? urls.png ?? source.image_url),
       degradedImage: resolveApiAssetUrl(urls.degraded_image ?? urls.degradedImage),
       json: resolveApiAssetUrl(urls.json ?? source.json_url),
     },
-    rules: rulesRaw.length ? rulesRaw.map(rule) : isInvoice ? fallback.rules : [],
+    rules: rulesRaw.map(rule),
     invoice: Object.keys(invoice).length ? (invoice as unknown as InvoiceData) : undefined,
     medicalNote: Object.keys(medicalNote).length ? (medicalNote as unknown as MedicalNoteData) : undefined,
     conversation: Object.keys(conversation).length ? (conversation as unknown as SupportConversationData) : undefined,
@@ -255,7 +255,8 @@ export function normalizeDomains(value: unknown): Domain[] {
       description: text(source.description, "Synthetic document generation domain."),
       available: bool(source.available ?? source.enabled, id === "invoices"),
       generated: numeric(source.generated ?? source.document_count ?? source.count),
-      accuracy: percentScore(source.accuracy ?? source.validation_score, 0),
+      // null means "no completed runs yet", which the UI renders as an em dash rather than 0%.
+      accuracy: source.accuracy == null && source.validation_score == null ? 0 : percentScore(source.accuracy ?? source.validation_score, 0),
     };
   });
 }

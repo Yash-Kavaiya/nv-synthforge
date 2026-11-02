@@ -240,3 +240,24 @@ describe("resolveApiAssetUrl", () => {
     expect(resolveApiAssetUrl("javascript:alert(1)")).toBeUndefined();
   });
 });
+
+describe("live data is never padded with demo values", () => {
+  it("leaves missing invoice fields and rules empty instead of borrowing mock data", () => {
+    const document = normalizeDocument({
+      id: "inv-live",
+      domain: "invoices",
+      validation_score: 100,
+      invoice: { invoice_number: "INV-000001-0001", seller: { name: "Astra Analytics Pvt Ltd" } },
+    });
+    expect(document.rules).toEqual([]);
+    expect(document.dueDate).toBeUndefined();
+    expect(document.amount).toBeUndefined();
+    expect(document.vendor).toBe("Astra Analytics Pvt Ltd");
+    expect(document.invoiceNumber).toBe("INV-000001-0001");
+  });
+
+  it("maps a domain with no completed runs to zero accuracy", () => {
+    const [domain] = normalizeDomains({ domains: [{ id: "legal", available: true, generated: 0, accuracy: null }] });
+    expect(domain).toMatchObject({ id: "legal", generated: 0, accuracy: 0 });
+  });
+});

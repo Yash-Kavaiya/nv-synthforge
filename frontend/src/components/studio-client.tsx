@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Braces, Check, ChevronDown, CircleAlert, CloudCog, Cpu, Download, Eye, FileJson2, Gauge, Languages, LoaderCircle, RotateCcw, ShieldCheck, Sparkles, WandSparkles } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { fallbackGallery } from "@/lib/mock-data";
 import type { ClinicalProfile, DomainId, FinanceStatementType, GenerateRequest, HRDocumentType, Job, Language, LegalDocumentType, Provider, RetailCategory, SentimentArc, SupportIndustry } from "@/lib/types";
 import { DocumentPreview } from "./document-preview";
@@ -100,7 +100,7 @@ export function StudioClient({ initialDomain = "invoices" }: { initialDomain?: D
         id,
         status: progress >= 100 ? "completed" : "running",
         progress,
-        message: progress >= 100 ? `${request.count} synthetic ${request.domain === "invoices" ? "invoices validated" : request.domain === "healthcare" ? "clinical notes forged" : request.domain === "legal" ? "contracts drafted" : "conversations synthesized"}` : progress > 68 ? "Running schema and validation checks" : "Rendering document variants",
+        message: progress >= 100 ? `${request.count} synthetic ${DOMAIN_META[request.domain].noun} validated (simulated)` : progress > 68 ? "Running schema and validation checks" : "Rendering document variants",
         results: progress >= 100 ? fallbackGallery.slice(0, Math.min(3, request.count)).map((item, index) => ({ ...item, id: `${id}-${index}`, language: request.language, provider: request.provider, createdAt: new Date().toISOString() })) : [],
       });
       if (progress >= 100 && intervalRef.current) clearInterval(intervalRef.current);
@@ -154,7 +154,10 @@ export function StudioClient({ initialDomain = "invoices" }: { initialDomain?: D
       if (created.status === "completed") setSubmitting(false);
       else startPolling(created.id);
     } catch (generationError) {
-      if (requestConfig.domain !== "invoices") {
+      // A status code means the API is reachable and rejected the request (e.g. 422): surface it instead of
+      // masking it with simulated output. Only a network failure on the invoice workbench falls back to the demo.
+      const reachable = generationError instanceof ApiError && generationError.status !== undefined;
+      if (reachable || requestConfig.domain !== "invoices") {
         setError(generationError instanceof Error ? generationError.message : `Unable to reach the ${requestConfig.domain} generation API.`);
         setSubmitting(false);
         return;
