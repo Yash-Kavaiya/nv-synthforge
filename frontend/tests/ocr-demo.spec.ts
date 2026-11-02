@@ -2,7 +2,8 @@ import { test, expect } from '@playwright/test';
 
 test.describe('NV-SynthForge Track C OCR Demo', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/ocr');
+    // Wait for hydration so clicks are not lost on a cold dev-server compile.
+    await page.goto('/ocr', { waitUntil: 'networkidle' });
   });
 
   test('OCR page loads with a sample picker or the empty-state CTA', async ({ page }) => {

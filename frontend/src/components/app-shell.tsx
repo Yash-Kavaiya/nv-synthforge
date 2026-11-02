@@ -68,8 +68,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             );
           })}
           <p className="nav-group-label">SYSTEM</p>
-          <button className="nav-item" type="button"><Activity aria-hidden="true" /><span>API telemetry</span></button>
-          <button className="nav-item" type="button"><Settings2 aria-hidden="true" /><span>Settings</span></button>
+          {/* Not built yet: rendered disabled so they don't look like working navigation. */}
+          <button className="nav-item" type="button" disabled title="Coming soon"><Activity aria-hidden="true" /><span>API telemetry</span><small className="nav-soon">SOON</small></button>
+          <button className="nav-item" type="button" disabled title="Coming soon"><Settings2 aria-hidden="true" /><span>Settings</span><small className="nav-soon">SOON</small></button>
         </nav>
         <div className="sidebar-footer">
           <div className="environment-row">

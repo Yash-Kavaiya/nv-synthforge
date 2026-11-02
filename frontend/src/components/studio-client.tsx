@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Braces, Check, ChevronDown, CircleAlert, CloudCog, Cpu, Download, Eye, FileJson2, Gauge, Languages, LoaderCircle, RotateCcw, ShieldCheck, Sparkles, WandSparkles } from "lucide-react";
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError, normalizeJob } from "@/lib/api";
 import { fallbackGallery } from "@/lib/mock-data";
 import type { ClinicalProfile, DomainId, FinanceStatementType, GenerateRequest, HRDocumentType, Job, Language, LegalDocumentType, Provider, RetailCategory, SentimentArc, SupportIndustry } from "@/lib/types";
 import { DocumentPreview } from "./document-preview";
@@ -68,12 +68,24 @@ export function StudioClient({ initialDomain = "invoices" }: { initialDomain?: D
   const [demo, setDemo] = useState(false);
   const [error, setError] = useState("");
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const socketRef = useRef<WebSocket | null>(null);
 
-  useEffect(() => () => { if (intervalRef.current) clearInterval(intervalRef.current); }, []);
+  function stopTracking() {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = null;
+    const socket = socketRef.current;
+    socketRef.current = null;
+    if (socket) {
+      socket.onmessage = socket.onerror = socket.onclose = null;
+      socket.close();
+    }
+  }
+
+  useEffect(() => stopTracking, []);
 
   function switchDomain(domain: DomainId) {
     const next = defaultsFor(domain);
-    if (intervalRef.current) clearInterval(intervalRef.current);
+    stopTracking();
     setConfig(next);
     setAdvancedJson(JSON.stringify(next.degradation, null, 2));
     setAdvancedOpen(false);
@@ -107,6 +119,37 @@ export function StudioClient({ initialDomain = "invoices" }: { initialDomain?: D
     }, 650);
   }
 
+  // Prefer the server's WebSocket stream; fall back to polling if it can't connect or drops mid-job.
+  function trackJob(id: string) {
+    if (typeof WebSocket === "undefined") return startPolling(id);
+    let socket: WebSocket;
+    try {
+      socket = new WebSocket(api.websocketUrl(id));
+    } catch {
+      return startPolling(id);
+    }
+    socketRef.current = socket;
+    let finished = false;
+    socket.onmessage = (event) => {
+      try {
+        const next = normalizeJob(JSON.parse(String(event.data)));
+        setJob(next);
+        if (next.status === "completed" || next.status === "failed") {
+          finished = true;
+          setSubmitting(false);
+          stopTracking();
+        }
+      } catch {
+        // Ignore a malformed frame; the next snapshot or the polling fallback will catch up.
+      }
+    };
+    socket.onclose = () => {
+      if (socketRef.current !== socket) return;
+      socketRef.current = null;
+      if (!finished) startPolling(id);
+    };
+  }
+
   function startPolling(id: string) {
     let failures = 0;
     intervalRef.current = setInterval(async () => {
@@ -132,7 +175,7 @@ export function StudioClient({ initialDomain = "invoices" }: { initialDomain?: D
   async function generate() {
     setError("");
     setJsonError("");
-    if (intervalRef.current) clearInterval(intervalRef.current);
+    stopTracking();
     let requestConfig = config;
     if (config.domain === "invoices") {
       try {
@@ -152,7 +195,7 @@ export function StudioClient({ initialDomain = "invoices" }: { initialDomain?: D
       const created = await api.generate(requestConfig);
       setJob(created);
       if (created.status === "completed") setSubmitting(false);
-      else startPolling(created.id);
+      else trackJob(created.id);
     } catch (generationError) {
       // A status code means the API is reachable and rejected the request (e.g. 422): surface it instead of
       // masking it with simulated output. Only a network failure on the invoice workbench falls back to the demo.

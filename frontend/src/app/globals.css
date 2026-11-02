@@ -59,6 +59,9 @@ svg { width: 18px; height: 18px; flex: 0 0 auto; }
 .nav-item { position: relative; width: 100%; min-height: 43px; padding: 0 12px; display: flex; align-items: center; gap: 11px; color: var(--muted); background: transparent; border: 1px solid transparent; border-radius: 8px; font-size: 13px; text-align: left; transition: background .15s, color .15s, border-color .15s; }
 .nav-item:hover { color: var(--text); background: var(--ink-850); border-color: var(--line-soft); }
 .nav-item svg { width: 17px; }
+.nav-item:disabled { opacity: .55; cursor: not-allowed; }
+.nav-item:disabled:hover { color: var(--muted); background: transparent; border-color: transparent; }
+.nav-soon { margin-left: auto; font-size: 9px; letter-spacing: .08em; color: var(--muted); }
 .nav-item i { position: absolute; right: 10px; width: 5px; height: 5px; background: var(--lime); box-shadow: 0 0 12px var(--lime); }
 .nav-active { color: #efffdb; background: var(--lime-soft); border-color: #36551d; }
 .nav-active svg { color: var(--lime-bright); }
