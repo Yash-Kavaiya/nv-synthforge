@@ -30,7 +30,7 @@ jobs:
           python-version: "3.11"
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v10
+        uses: astral-sh/setup-uv@v10.3.3  # only exact release tags are published
         with:
           enable-cache: true
           cache-dependency-glob: backend/uv.lock
@@ -111,7 +111,7 @@ jobs:
           python-version: "3.11"
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v10
+        uses: astral-sh/setup-uv@v10.3.3  # only exact release tags are published
 
       - name: Validate YAML and infrastructure contract
         run: uv run --no-project --with PyYAML==6.0.3 python scripts/validate-infra.py
