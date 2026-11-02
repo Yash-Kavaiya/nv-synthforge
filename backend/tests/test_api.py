@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -28,7 +29,12 @@ def test_health_domains_and_openapi(tmp_path: Path) -> None:
 
     assert health.status_code == 200
     assert health.json()["status"] == "ok"
-    assert health.json()["nemo_version"] == "0.7.0"
+    # data-designer is the optional 'nemo' extra; health reports its version only when installed.
+    try:
+        expected_nemo = version("data-designer")
+    except PackageNotFoundError:
+        expected_nemo = None
+    assert health.json()["nemo_version"] == expected_nemo
     assert domains.status_code == 200
     assert domains.json()["domains"][0]["id"] == "invoices"
     assert domains.json()["domains"][0]["available"] is True

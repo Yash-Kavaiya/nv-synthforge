@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import json
 from pathlib import Path
 
@@ -61,7 +62,9 @@ def test_exporter_writes_json_jsonl_csv_parquet_and_huggingface_card(tmp_path: P
     artifacts = ArtifactExporter(tmp_path).export(invoices)
 
     kinds = {artifact.kind for artifact in artifacts}
-    assert {"json", "jsonl", "csv", "parquet", "dataset-card"} <= kinds
+    assert {"json", "jsonl", "csv", "dataset-card"} <= kinds
+    # Parquet comes from the optional 'parquet' extra and must appear exactly when pyarrow is installed.
+    assert ("parquet" in kinds) == (importlib.util.find_spec("pyarrow") is not None)
     json_path = next(item.path for item in artifacts if item.kind == "json")
     assert len(json.loads(json_path.read_text(encoding="utf-8"))) == 2
     jsonl_path = next(item.path for item in artifacts if item.kind == "jsonl")

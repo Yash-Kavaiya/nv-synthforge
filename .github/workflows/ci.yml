@@ -37,7 +37,7 @@ jobs:
 
       - name: Install backend dependencies
         working-directory: backend
-        run: uv sync --locked
+        run: uv sync --locked --extra parquet
 
       - name: Lint backend
         working-directory: backend
